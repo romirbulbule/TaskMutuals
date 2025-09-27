@@ -9,31 +9,31 @@
 import SwiftUI
 
 struct TaskMutualsFeedView: View {
-    // Example post data
-    let examplePosts = [
-        "Finish SwiftUI project",
-        "Grocery shopping",
-        "Study for midterms",
-        "Gym push day"
-    ]
+    @StateObject private var feedVM = TaskMutualsFeedViewModel()
+    @State private var showingPostSheet = false
 
     var body: some View {
         NavigationView {
-            List(examplePosts, id: \.self) { post in
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("TaskMutuals Print")
-                        .font(.headline)
-                        .foregroundColor(.blue)
-                    Text(post)
-                        .font(.body)
+            List(feedVM.posts) { post in
+                VStack(alignment: .leading) {
+                    Text(post.title).font(.headline)
+                    Text(post.description).font(.subheadline)
                 }
                 .padding(.vertical, 8)
             }
             .navigationTitle("TaskMutuals Feed")
+            .toolbar {
+                Button(action: { showingPostSheet = true }) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title)
+                }
+            }
+            .sheet(isPresented: $showingPostSheet) {
+                PostTaskView(feedVM: feedVM)
+            }
         }
     }
 }
-
 
 
 
