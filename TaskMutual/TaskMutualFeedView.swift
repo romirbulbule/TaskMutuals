@@ -8,7 +8,7 @@
 
 import SwiftUI
 
-struct TaskMutualsFeedView: View {
+struct TaskMutualFeedView: View {
     @StateObject private var feedVM = TaskMutualsFeedViewModel()
     @State private var showingPostSheet = false
 

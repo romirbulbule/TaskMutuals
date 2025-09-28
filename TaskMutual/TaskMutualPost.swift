@@ -8,7 +8,7 @@
 
 import SwiftUI
 
-struct TaskMutualPost: Identifiable {
+struct TaskMutualsPost: Identifiable {
     let id = UUID()
     let title: String
     let description: String
