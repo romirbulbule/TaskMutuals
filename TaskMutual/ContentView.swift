@@ -8,17 +8,16 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject var authViewModel = AuthViewModel()
-    
+    @EnvironmentObject var authViewModel: AuthViewModel
 
     var body: some View {
         Group {
-            if authViewModel.user != nil {
+            if authViewModel.isLoggedIn {
                 MainFeedView()
-                    .environmentObject(authViewModel)  // Passing the environment object DOWN
+                    .environmentObject(authViewModel)
             } else {
                 LoginView()
-                    .environmentObject(authViewModel)  // Passing the environment object DOWN
+                    .environmentObject(authViewModel)
             }
         }
     }

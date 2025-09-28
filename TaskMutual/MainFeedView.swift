@@ -10,32 +10,72 @@ import SwiftUI
 
 struct MainFeedView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
-    @State private var showFeed = false
+    @State private var showPostTask = false
+
+    struct Task: Identifiable {
+        let id: UUID = UUID()
+        let title: String
+        let description: String
+    }
+
+    @State private var tasks: [Task] = [
+        Task(title: "Move a Sofa", description: "Need help moving a sofa across town. $40. Contact to negotiate time."),
+        Task(title: "Yard Cleanup", description: "Looking for someone to clean leaves in backyard."),
+        Task(title: "Assemble Bookshelf", description: "IKEA bookshelf, instructions included. $25.")
+    ]
 
     var body: some View {
-        if showFeed {
-            TaskMutualFeedView() // This is your new "Instagram-style" feed layout
-                .environmentObject(authViewModel)
-        } else {
-            VStack(spacing: 24) {
-                Text("Welcome to TaskMutual Feed!")
-                    .font(.title)
-                Button("Continue") {
-                    showFeed = true
-                }
-                .buttonStyle(.borderedProminent)
-                Button("Sign Out") {
-                    authViewModel.signOut()
-                }
-                .foregroundColor(.red)
+        VStack(spacing: 0) {
+            // Post Task Button
+            Button(action: {
+                showPostTask = true
+            }) {
+                Text("Post a Task")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Theme.accent)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+                    .padding(.top)
             }
-            .padding()
+
+            // DUMMY TASK FEED
+            List(tasks) { task in
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(task.title)
+                        .font(.headline)
+                        .foregroundColor(Theme.accent)
+                    Text(task.description)
+                        .font(.subheadline)
+                        .foregroundColor(.primary)
+                }
+                .padding(.vertical, 6)
+            }
+            .listStyle(.plain)
+            .background(Theme.background)
+
+            // Logout Button
+            Button(action: {
+                authViewModel.signOut()
+            }) {
+                Text("Logout")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Theme.accent)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+                    .padding([.horizontal, .bottom])
+            }
+        }
+        .background(Theme.background.ignoresSafeArea())
+        .sheet(isPresented: $showPostTask) {
+            PostTaskView()
+                .environmentObject(authViewModel)
         }
     }
 }
-
-
-
 
 
 

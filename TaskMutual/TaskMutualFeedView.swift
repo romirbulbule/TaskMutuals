@@ -16,25 +16,29 @@ struct TaskMutualFeedView: View {
         NavigationView {
             List(feedVM.posts) { post in
                 VStack(alignment: .leading) {
-                    Text(post.title).font(.headline)
-                    Text(post.description).font(.subheadline)
+                    Text(post.title)
+                        .font(.headline)
+                    Text(post.description)
+                        .font(.subheadline)
                 }
                 .padding(.vertical, 8)
             }
             .navigationTitle("TaskMutual Feed")
             .toolbar {
-                Button(action: { showingPostSheet = true }) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.title)
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: { showingPostSheet = true }) {
+                        Image(systemName: "plus.circle.fill").font(.title)
+                    }
                 }
             }
             .sheet(isPresented: $showingPostSheet) {
-                PostTaskView(feedVM: feedVM)
+                PostTaskView { title, description in
+                    feedVM.addPost(title: title, description: description)
+                }
             }
         }
     }
 }
-
 
 
 

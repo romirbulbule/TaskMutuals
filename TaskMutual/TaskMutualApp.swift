@@ -6,17 +6,29 @@
 //
 
 import SwiftUI
-import Firebase
+import FirebaseCore
 
 @main
 struct TaskMutualApp: App {
-    init() {
-        FirebaseApp.configure()
-    }
+    @StateObject private var authViewModel = AuthViewModel()
+    @State private var showSplash = true
+
+    init() { FirebaseApp.configure() }
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            if showSplash {
+                SplashScreen()
+                    .environmentObject(authViewModel)
+                    .onAppear {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                            showSplash = false
+                        }
+                    }
+            } else {
+                ContentView()
+                    .environmentObject(authViewModel)
+            }
         }
     }
 }

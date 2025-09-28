@@ -9,10 +9,11 @@
 import SwiftUI
 
 struct PostTaskView: View {
-    @ObservedObject var feedVM: TaskMutualFeedViewModel
     @Environment(\.presentationMode) var presentationMode
     @State private var title = ""
     @State private var description = ""
+
+    var onPost: ((String, String) -> Void)? = nil
 
     var body: some View {
         NavigationView {
@@ -25,15 +26,16 @@ struct PostTaskView: View {
                 }
             }
             .navigationBarTitle("New Task", displayMode: .inline)
-            .navigationBarItems(trailing: Button("Post") {
-                feedVM.addPost(title: title, description: description)
-                presentationMode.wrappedValue.dismiss()
-            }.disabled(title.isEmpty || description.isEmpty))
+            .navigationBarItems(trailing:
+                Button("Post") {
+                    onPost?(title, description)
+                    presentationMode.wrappedValue.dismiss()
+                }
+                .disabled(title.isEmpty || description.isEmpty)
+            )
         }
     }
 }
-
-
 
 
 
