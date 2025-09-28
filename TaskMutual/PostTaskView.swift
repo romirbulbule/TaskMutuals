@@ -6,6 +6,8 @@
 //
 
 
+
+
 import SwiftUI
 
 struct PostTaskView: View {
@@ -13,7 +15,8 @@ struct PostTaskView: View {
     @State private var title = ""
     @State private var description = ""
 
-    var onPost: ((String, String) -> Void)? = nil
+    // 👇 this closure now *must* be provided by the parent
+    var onPost: ((String, String) -> Void)
 
     var body: some View {
         NavigationView {
@@ -28,7 +31,7 @@ struct PostTaskView: View {
             .navigationBarTitle("New Task", displayMode: .inline)
             .navigationBarItems(trailing:
                 Button("Post") {
-                    onPost?(title, description)
+                    onPost(title, description) // 👈 call closure
                     presentationMode.wrappedValue.dismiss()
                 }
                 .disabled(title.isEmpty || description.isEmpty)
@@ -36,8 +39,6 @@ struct PostTaskView: View {
         }
     }
 }
-
-
 
 
 

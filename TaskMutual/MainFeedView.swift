@@ -6,6 +6,9 @@
 //
 
 
+
+
+
 import SwiftUI
 
 struct MainFeedView: View {
@@ -40,7 +43,7 @@ struct MainFeedView: View {
                     .padding(.top)
             }
 
-            // DUMMY TASK FEED
+            // TASK FEED
             List(tasks) { task in
                 VStack(alignment: .leading, spacing: 6) {
                     Text(task.title)
@@ -71,13 +74,14 @@ struct MainFeedView: View {
         }
         .background(Theme.background.ignoresSafeArea())
         .sheet(isPresented: $showPostTask) {
-            PostTaskView()
-                .environmentObject(authViewModel)
+           
+            PostTaskView { title, description in
+                tasks.append(Task(title: title, description: description))
+            }
+            .environmentObject(authViewModel)
         }
     }
 }
-
-
 
 
 
