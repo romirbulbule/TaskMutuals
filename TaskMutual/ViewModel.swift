@@ -8,7 +8,7 @@
 
 import SwiftUI
 
-class TaskMutualsFeedViewModel: ObservableObject {
+class TaskMutualFeedViewModel: ObservableObject {
     @Published var posts: [TaskMutualPost] = [
         TaskMutualPost(title: "Need help moving boxes", description: "Downtown, $20 reward"),
         TaskMutualPost(title: "Math tutoring", description: "1 hour, $15 reward")

@@ -14,11 +14,11 @@ struct MainFeedView: View {
 
     var body: some View {
         if showFeed {
-            TaskMutualsFeedView() // This is your new "Instagram-style" feed layout
+            TaskMutualFeedView() // This is your new "Instagram-style" feed layout
                 .environmentObject(authViewModel)
         } else {
             VStack(spacing: 24) {
-                Text("Welcome to TaskMutuals Feed!")
+                Text("Welcome to TaskMutual Feed!")
                     .font(.title)
                 Button("Continue") {
                     showFeed = true

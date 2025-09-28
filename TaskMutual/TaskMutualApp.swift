@@ -9,7 +9,7 @@ import SwiftUI
 import Firebase
 
 @main
-struct TaskMutualsApp: App {
+struct TaskMutualApp: App {
     init() {
         FirebaseApp.configure()
     }

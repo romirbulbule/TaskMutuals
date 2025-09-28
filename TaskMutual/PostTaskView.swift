@@ -9,7 +9,7 @@
 import SwiftUI
 
 struct PostTaskView: View {
-    @ObservedObject var feedVM: TaskMutualsFeedViewModel
+    @ObservedObject var feedVM: TaskMutualFeedViewModel
     @Environment(\.presentationMode) var presentationMode
     @State private var title = ""
     @State private var description = ""

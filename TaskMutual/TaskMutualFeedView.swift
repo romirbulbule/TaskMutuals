@@ -9,7 +9,7 @@
 import SwiftUI
 
 struct TaskMutualFeedView: View {
-    @StateObject private var feedVM = TaskMutualsFeedViewModel()
+    @StateObject private var feedVM = TaskMutualFeedViewModel()
     @State private var showingPostSheet = false
 
     var body: some View {
@@ -21,7 +21,7 @@ struct TaskMutualFeedView: View {
                 }
                 .padding(.vertical, 8)
             }
-            .navigationTitle("TaskMutuals Feed")
+            .navigationTitle("TaskMutual Feed")
             .toolbar {
                 Button(action: { showingPostSheet = true }) {
                     Image(systemName: "plus.circle.fill")
