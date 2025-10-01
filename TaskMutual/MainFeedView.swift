@@ -11,10 +11,10 @@ struct MainFeedView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @State private var showPostTask = false
 
-    struct Task: Identifiable, Codable {
+    struct Task: Identifiable, Codable, Equatable {
         let id: UUID
-        let title: String
-        let description: String
+        var title: String
+        var description: String
 
         init(id: UUID = UUID(), title: String, description: String) {
             self.id = id
@@ -24,6 +24,10 @@ struct MainFeedView: View {
     }
 
     @State private var tasks: [Task] = []
+    @State private var selectedTask: Task? = nil
+    @State private var showingEditSheet = false
+    @State private var showingReportAlert = false
+    @State private var showingResponseSheet = false
 
     // Sample tasks (to show on first launch only)
     private let sampleTasks: [Task] = [
@@ -49,16 +53,47 @@ struct MainFeedView: View {
             }
 
             // TASK FEED
-            List(tasks) { task in
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(task.title)
-                        .font(.headline)
-                        .foregroundColor(Theme.accent)
-                    Text(task.description)
-                        .font(.subheadline)
-                        .foregroundColor(.primary)
+            List {
+                ForEach(tasks) { task in
+                    Button(action: {
+                        selectedTask = task
+                        showingEditSheet = true
+                    }) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(task.title)
+                                .font(.headline)
+                                .foregroundColor(Theme.accent)
+                            Text(task.description)
+                                .font(.subheadline)
+                                .foregroundColor(.primary)
+                        }
+                        .padding(.vertical, 6)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .contextMenu {
+                        Button("Edit") {
+                            selectedTask = task
+                            showingEditSheet = true
+                        }
+                        Button("Delete") {
+                            if let idx = tasks.firstIndex(where: { $0.id == task.id }) {
+                                tasks.remove(at: idx)
+                                saveTasks()
+                            }
+                        }
+                        Button("Report") {
+                            showingReportAlert = true
+                        }
+                        Button("Respond") {
+                            selectedTask = task
+                            showingResponseSheet = true
+                        }
+                    }
                 }
-                .padding(.vertical, 6)
+                .onDelete { indexSet in
+                    tasks.remove(atOffsets: indexSet)
+                    saveTasks()
+                }
             }
             .listStyle(.plain)
             .background(Theme.background)
@@ -81,9 +116,35 @@ struct MainFeedView: View {
         .sheet(isPresented: $showPostTask) {
             PostTaskView { title, description in
                 tasks.append(Task(title: title, description: description))
-                saveTasks() // Save after each addition
+                saveTasks()
             }
             .environmentObject(authViewModel)
+        }
+        .sheet(isPresented: $showingEditSheet) {
+            if let task = selectedTask {
+                EditTaskView(
+                    post: TaskPost(id: task.id, title: task.title, description: task.description)
+                ) { title, description in
+                    if let idx = tasks.firstIndex(where: { $0.id == task.id }) {
+                        tasks[idx] = Task(id: task.id, title: title, description: description)
+                        saveTasks()
+                    }
+                    showingEditSheet = false
+                }
+            }
+        }
+        .alert(isPresented: $showingReportAlert) {
+            Alert(title: Text("Reported"), message: Text("You've reported this task."), dismissButton: .default(Text("OK")))
+        }
+        .sheet(isPresented: $showingResponseSheet) {
+            if let task = selectedTask {
+                ResponseView(
+                    post: TaskPost(id: task.id, title: task.title, description: task.description)
+                ) { message in
+                    // Handle response (save/send elsewhere)
+                    showingResponseSheet = false
+                }
+            }
         }
         .onAppear {
             loadTasks()
@@ -110,6 +171,13 @@ struct MainFeedView: View {
             tasks = loaded
         }
     }
+}
+
+// Helper for modal reuse
+struct TaskModalPost: Identifiable {
+    var id: UUID
+    var title: String
+    var description: String
 }
 
 

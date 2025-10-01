@@ -8,10 +8,10 @@
 
 import Foundation
 
-struct TaskPost: Identifiable, Codable {
+struct TaskPost: Identifiable, Codable, Equatable {
     let id: UUID
-    let title: String
-    let description: String
+    var title: String
+    var description: String
 
     init(id: UUID = UUID(), title: String, description: String) {
         self.id = id
@@ -23,7 +23,6 @@ struct TaskPost: Identifiable, Codable {
 class TaskMutualFeedViewModel: ObservableObject {
     @Published var posts: [TaskPost] = []
 
-    // Sample posts for first launch only
     private let samplePosts: [TaskPost] = [
         TaskPost(title: "Move a Sofa", description: "Need help moving a sofa across town. $40. Contact to negotiate time."),
         TaskPost(title: "Yard Cleanup", description: "Looking for someone to clean leaves in backyard."),
@@ -43,16 +42,21 @@ class TaskMutualFeedViewModel: ObservableObject {
         savePosts()
     }
 
-    // --- Persistence Logic ---
+    func deletePosts(at offsets: IndexSet) {
+        posts.remove(atOffsets: offsets)
+        savePosts()
+    }
 
-    func savePosts() {
-        do {
-            let encoder = JSONEncoder()
-            let data = try encoder.encode(posts)
-            UserDefaults.standard.set(data, forKey: "SavedPosts")
-        } catch {
-            print("Failed to save posts: \(error)")
-        }
+    func editPost(post: TaskPost, newTitle: String, newDescription: String) {
+        guard let idx = posts.firstIndex(of: post) else { return }
+        posts[idx].title = newTitle
+        posts[idx].description = newDescription
+        savePosts()
+    }
+
+    func reportPost(post: TaskPost) {
+        // For now, just print and/or mark the post; expand for real moderation!
+        print("Reported \(post.title)")
     }
 
     func loadPosts() {
@@ -64,8 +68,17 @@ class TaskMutualFeedViewModel: ObservableObject {
             print("Failed to load posts: \(error)")
         }
     }
-}
 
+    func savePosts() {
+        do {
+            let encoder = JSONEncoder()
+            let data = try encoder.encode(posts)
+            UserDefaults.standard.set(data, forKey: "SavedPosts")
+        } catch {
+            print("Failed to save posts: \(error)")
+        }
+    }
+}
 
 
 
