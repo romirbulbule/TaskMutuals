@@ -8,17 +8,6 @@
 import SwiftUI
 import FirebaseFirestore
 
-// MARK: Your Task Model
-struct Task: Identifiable, Codable, Equatable {
-    @DocumentID var id: String?
-    var title: String
-    var description: String
-    var timestamp: Date = Date()
-}
-
-// MARK: - FeedView
-import SwiftUI
-
 struct FeedView: View {
     @StateObject private var tasksVM = TasksViewModel()
     @State private var showPostTaskSheet = false
@@ -79,7 +68,7 @@ struct FeedView: View {
             .sheet(isPresented: $showResponseSheet) {
                 if let selectedTask = selectedTask {
                     ResponseView(post: selectedTask) { sentMessage in
-                        // TODO: handle response
+                        // Handle response
                         showResponseSheet = false
                     }
                 } else {

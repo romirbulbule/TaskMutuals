@@ -5,9 +5,7 @@
 //  Created by Romir Bulbule on 9/30/25.
 //
 
-
 import SwiftUI
-import Foundation
 
 struct ResponseView: View {
     var post: Task
@@ -31,4 +29,5 @@ struct ResponseView: View {
         .background(Theme.background.ignoresSafeArea())
     }
 }
+
 
