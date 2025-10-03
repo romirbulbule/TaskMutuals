@@ -7,9 +7,10 @@
 
 
 import SwiftUI
+import Foundation
 
 struct ResponseView: View {
-    var post: TaskPost
+    var post: Task
     @State private var message: String = ""
     var onSend: (String) -> Void
 
@@ -23,9 +24,11 @@ struct ResponseView: View {
                     onSend(message)
                 }
                 .disabled(message.isEmpty)
+                .padding()
             }
-            .padding()
             .navigationTitle("Respond")
         }
+        .background(Theme.background.ignoresSafeArea())
     }
 }
+

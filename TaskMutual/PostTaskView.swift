@@ -11,33 +11,54 @@ struct PostTaskView: View {
     @Environment(\.presentationMode) var presentationMode
     @State private var title = ""
     @State private var description = ""
-
-    // 👇 this closure now *must* be provided by the parent
-    var onPost: ((String, String) -> Void)
+    var onPost: (String, String) -> Void
 
     var body: some View {
         NavigationView {
-            Form {
-                Section(header: Text("Task Title")) {
+            VStack(spacing: 20) {
+                VStack(alignment: .leading) {
+                    Text("Task Title")
+                        .foregroundColor(Color.white)
+                        .font(.caption)
                     TextField("Title", text: $title)
+                        .padding()
+                        .background(Color.white)
+                        .cornerRadius(10)
+                        .foregroundColor(.black)
                 }
-                Section(header: Text("Description")) {
+                VStack(alignment: .leading) {
+                    Text("Description")
+                        .foregroundColor(Color.white)
+                        .font(.caption)
                     TextField("Description", text: $description)
+                        .padding()
+                        .background(Color.white)
+                        .cornerRadius(10)
+                        .foregroundColor(.black)
+                }
+                Spacer()
+            }
+            .padding()
+            .navigationBarTitle("New Task", displayMode: .inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: {
+                        onPost(title, description)
+                        presentationMode.wrappedValue.dismiss()
+                    }) {
+                        Text("Post")
+                            .frame(width: 60, height: 34)
+                            .foregroundColor(.white)
+                            .background(Theme.accent)
+                            .cornerRadius(8)
+                    }
+                    .disabled(title.isEmpty || description.isEmpty)
                 }
             }
-            .navigationBarTitle("New Task", displayMode: .inline)
-            .navigationBarItems(trailing:
-                Button("Post") {
-                    onPost(title, description) // 👈 call closure
-                    presentationMode.wrappedValue.dismiss()
-                }
-                .disabled(title.isEmpty || description.isEmpty)
-            )
+            .background(Theme.background.ignoresSafeArea())
         }
     }
 }
-
-
 
 
 

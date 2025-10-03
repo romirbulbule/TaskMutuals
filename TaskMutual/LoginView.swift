@@ -24,7 +24,6 @@ struct LoginView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 28))
                 .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
                 .padding(.bottom, 8)
-
             Text(showSignUp ? "Sign Up" : "Login")
                 .font(.largeTitle)
                 .foregroundColor(.white)
@@ -62,31 +61,29 @@ struct LoginView: View {
                         .onSubmit {
                             handleSignUpOrLogin()
                         }
+
+                    if !confirmError.isEmpty {
+                        Text(confirmError)
+                            .foregroundColor(.red)
+                            .font(.subheadline)
+                            .frame(maxWidth: .infinity)
+                            .multilineTextAlignment(.center)
+                            .padding(.top, 6)
+                    }
+                }
+
+                if let error = authViewModel.authError, !error.isEmpty {
+                    Text("The Username or Password is incorrect. Please try again.")
+                        .foregroundColor(.red)
+                        .font(.subheadline)
+                        .frame(maxWidth: .infinity)
+                        .multilineTextAlignment(.center)
+                        .padding(.top, 6)
                 }
             }
             .padding(.horizontal, 10)
 
-            if !confirmError.isEmpty {
-                Text(confirmError)
-                    .foregroundColor(.red)
-                    .font(.subheadline)
-                    .frame(maxWidth: .infinity)
-                    .multilineTextAlignment(.center)
-                    .padding(.top, 6)
-            }
-
-            if authViewModel.authError != nil {
-                Text("The Username or Password is incorrect. Please try again.")
-                    .foregroundColor(.red)
-                    .font(.subheadline)
-                    .frame(maxWidth: .infinity)
-                    .multilineTextAlignment(.center)
-                    .padding(.top, 6)
-            }
-
-            Button(action: {
-                handleSignUpOrLogin()
-            }) {
+            Button(action: handleSignUpOrLogin) {
                 Text(showSignUp ? "Sign Up" : "Login")
                     .font(.headline)
                     .frame(maxWidth: .infinity)
@@ -95,21 +92,22 @@ struct LoginView: View {
                     .foregroundColor(.white)
                     .cornerRadius(10)
             }
+            .padding(.top)
 
             Button(action: {
                 showSignUp.toggle()
                 authViewModel.authError = nil
                 confirmError = ""
             }) {
-                Text(showSignUp ? "Already have an account? Login"
-                                : "Don't have an account? Sign Up")
+                Text(showSignUp ? "Already have an account? Login" : "Don't have an account? Sign Up")
                     .font(.subheadline)
                     .frame(maxWidth: .infinity)
                     .padding()
                     .foregroundColor(.white.opacity(0.85))
             }
+
+            Spacer()
         }
-        .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.background.ignoresSafeArea())
     }

@@ -9,12 +9,12 @@
 import SwiftUI
 
 struct EditTaskView: View {
-    var post: TaskPost
+    var post: Task
     @State private var title: String
     @State private var description: String
     var onSave: (String, String) -> Void
 
-    init(post: TaskPost, onSave: @escaping (String, String) -> Void) {
+    init(post: Task, onSave: @escaping (String, String) -> Void) {
         self.post = post
         self.onSave = onSave
         _title = State(initialValue: post.title)
@@ -36,8 +36,10 @@ struct EditTaskView: View {
                 }
             }
         }
+        .background(Theme.background.ignoresSafeArea())
     }
 }
+
 
 
 

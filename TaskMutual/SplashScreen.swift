@@ -19,7 +19,7 @@ struct SplashScreen: View {
             if showContent {
                 
                 if authViewModel.isLoggedIn {
-                    MainFeedView()
+                    FeedView()
                 } else {
                     LoginView()
                 }

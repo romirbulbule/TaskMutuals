@@ -13,8 +13,16 @@ struct TaskMutualApp: App {
     @StateObject private var authViewModel = AuthViewModel()
     @State private var showSplash = true
 
-    init() { FirebaseApp.configure() }
-
+    init() {
+        FirebaseApp.configure()
+        
+        // Set UITabBar appearance at launch
+        UITabBar.appearance().barTintColor = UIColor(named: "BrandBackground")
+        UITabBar.appearance().backgroundColor = UIColor(named: "BrandBackground")
+        UITabBar.appearance().unselectedItemTintColor = UIColor.white.withAlphaComponent(0.5)
+        UITabBar.appearance().tintColor = UIColor.white // Selected icon/text color
+    }
+    
     var body: some Scene {
         WindowGroup {
             if showSplash {
@@ -32,3 +40,4 @@ struct TaskMutualApp: App {
         }
     }
 }
+
