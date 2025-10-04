@@ -14,4 +14,12 @@ struct Task: Identifiable, Codable, Equatable {
     var title: String
     var description: String
     var timestamp: Date = Date()
+    var responses: [Response] = [] // Support for responses
+}
+
+struct Response: Codable, Identifiable, Equatable {
+    var id: String = UUID().uuidString
+    var fromUserId: String
+    var message: String
+    var timestamp: Date = Date()
 }

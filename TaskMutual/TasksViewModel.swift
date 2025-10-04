@@ -44,4 +44,19 @@ class TasksViewModel: ObservableObject {
             "timestamp": Date()
         ], merge: true)
     }
+
+    // Add response support
+    func addResponse(to task: Task, fromUserId: String, message: String, completion: (() -> Void)? = nil) {
+        guard let id = task.id else { return }
+        let newResponse = Response(fromUserId: fromUserId, message: message)
+        let encoded = try! Firestore.Encoder().encode(newResponse)
+        db.collection("tasks").document(id).updateData([
+            "responses": FieldValue.arrayUnion([encoded])
+        ]) { error in
+            if let error = error {
+                print("Error adding response: \(error)")
+            }
+            completion?()
+        }
+    }
 }

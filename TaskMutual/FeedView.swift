@@ -10,36 +10,30 @@ import FirebaseFirestore
 
 struct FeedView: View {
     @StateObject private var tasksVM = TasksViewModel()
+    @StateObject private var modalManager = ModalManager()
     @State private var showPostTaskSheet = false
-    @State private var showEditTaskSheet = false
-    @State private var showResponseSheet = false
-    @State private var selectedTask: Task?
-
+    
     var body: some View {
         NavigationView {
             ZStack {
                 Theme.background.ignoresSafeArea()
-                List {
-                    ForEach(tasksVM.tasks) { task in
-                        TaskCardView(
-                            task: task,
-                            onEdit: {
-                                selectedTask = task
-                                showEditTaskSheet = true
-                            },
-                            onDelete: { tasksVM.removeTask(task) },
-                            onReport: { /* implement report logic here */ },
-                            onRespond: {
-                                selectedTask = task
-                                showResponseSheet = true
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(tasksVM.tasks) { task in
+                            NavigationLink(destination: TaskDetailView(task: task)) {
+                                TaskCardView(
+                                    task: task,
+                                    onEdit: { modalManager.showEdit(for: task) },
+                                    onDelete: { tasksVM.removeTask(task) },
+                                    onReport: { /* implement report logic here */ },
+                                    onRespond: { modalManager.showResponse(for: task) }
+                                )
+                                .padding(.top, 8)
+                                .padding(.horizontal)
                             }
-                        )
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Theme.background)
+                        }
                     }
                 }
-                .listStyle(.plain)
-                .background(Theme.background)
             }
             .navigationTitle("Tasks")
             .navigationBarItems(leading:
@@ -55,24 +49,22 @@ struct FeedView: View {
                     showPostTaskSheet = false
                 }
             }
-            .sheet(isPresented: $showEditTaskSheet) {
-                if let selectedTask = selectedTask {
-                    EditTaskView(post: selectedTask) { updatedTitle, updatedDescription in
-                        tasksVM.updateTask(selectedTask, title: updatedTitle, description: updatedDescription)
-                        showEditTaskSheet = false
+            .sheet(isPresented: modalManager.showEditSheet) {
+                if let task = modalManager.editTask {
+                    EditTaskView(post: task) { updatedTitle, updatedDescription in
+                        tasksVM.updateTask(task, title: updatedTitle, description: updatedDescription)
+                        modalManager.closeEdit()
                     }
-                } else {
-                    EmptyView()
                 }
             }
-            .sheet(isPresented: $showResponseSheet) {
-                if let selectedTask = selectedTask {
-                    ResponseView(post: selectedTask) { sentMessage in
-                        // Handle response
-                        showResponseSheet = false
+            .sheet(isPresented: modalManager.showResponseSheet) {
+                if let task = modalManager.responseTask {
+                    ResponseView(post: task) { sentMessage in
+                        let currentUserId = "user_id_goes_here"
+                        tasksVM.addResponse(to: task, fromUserId: currentUserId, message: sentMessage) {
+                            modalManager.closeResponse()
+                        }
                     }
-                } else {
-                    EmptyView()
                 }
             }
         }

@@ -32,7 +32,7 @@ struct MainFeedView: View {
                         .cornerRadius(10)
                         .padding(.top)
                 }
-
+                
                 // TASK FEED
                 List {
                     ForEach(tasksVM.tasks) { task in
@@ -72,7 +72,7 @@ struct MainFeedView: View {
                 }
                 .listStyle(.plain)
                 .background(Theme.background)
-
+                
                 // Logout Button
                 Button(action: {
                     authViewModel.signOut()
@@ -106,12 +106,16 @@ struct MainFeedView: View {
             .sheet(isPresented: $showResponseSheet) {
                 if let task = selectedTask {
                     ResponseView(post: task) { message in
-                        // Handle response (save/send elsewhere)
-                        showResponseSheet = false
+                        // Replace next line with your actual user ID logic
+                        let currentUserId = "YOUR_AUTH_USER_ID"
+                        tasksVM.addResponse(to: task, fromUserId: currentUserId, message: message) {
+                            showResponseSheet = false
+                        }
                     }
                 }
             }
         }
+        .background(Theme.background.ignoresSafeArea())
     }
 }
 

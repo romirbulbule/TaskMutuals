@@ -8,41 +8,44 @@
 import SwiftUI
 
 struct TaskCardView: View {
-    let task: Task
+    var task: Task
     var onEdit: () -> Void
     var onDelete: () -> Void
     var onReport: () -> Void
     var onRespond: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 8) { // <--- leading alignment here
             Text(task.title)
-                .font(.headline)
+                .font(.title3)
+                .fontWeight(.semibold)
                 .foregroundColor(Theme.accent)
             Text(task.description)
-                .font(.subheadline)
-                .foregroundColor(.black)
+                .font(.body)
+                .foregroundColor(.primary)
+                .multilineTextAlignment(.leading) // <--- Force leading text alignment
+            HStack {
+                if !task.responses.isEmpty {
+                    Text("💬 \(task.responses.count)")
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                }
+                Spacer()
+                Text(task.timestamp, style: .date)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.top, 4)
         }
         .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.13), radius: 8, x: 0, y: 3)
-        )
-        .padding(.vertical, 6)
+        .background(Color.white)
+        .cornerRadius(15)
+        .shadow(color: Color.black.opacity(0.07), radius: 7, x: 0, y: 2)
         .contextMenu {
-            Button("Edit") { onEdit() }
-            Button("Delete", role: .destructive) { onDelete() }
-            Button("Report") { onReport() }
-            Button("Respond") { onRespond() }
-        }
-        .swipeActions(edge: .trailing) {
-            Button(role: .destructive) {
-                onDelete()
-            } label: {
-                Label("Delete", systemImage: "trash")
-            }
+            Button("Edit", action: onEdit)
+            Button("Delete", action: onDelete)
+            Button("Report", action: onReport)
+            Button("Respond", action: onRespond)
         }
     }
 }
