@@ -11,16 +11,15 @@ import FirebaseCore
 @main
 struct TaskMutualApp: App {
     @StateObject private var authViewModel = AuthViewModel()
+    @StateObject private var userVM = UserViewModel()
     @State private var showSplash = true
 
     init() {
         FirebaseApp.configure()
-        
-        // Set UITabBar appearance at launch
         UITabBar.appearance().barTintColor = UIColor(named: "BrandBackground")
         UITabBar.appearance().backgroundColor = UIColor(named: "BrandBackground")
         UITabBar.appearance().unselectedItemTintColor = UIColor.white.withAlphaComponent(0.5)
-        UITabBar.appearance().tintColor = UIColor.white // Selected icon/text color
+        UITabBar.appearance().tintColor = UIColor.white
     }
     
     var body: some Scene {
@@ -34,10 +33,12 @@ struct TaskMutualApp: App {
                         }
                     }
             } else {
-                ContentView()
+                RootSwitcherView()
                     .environmentObject(authViewModel)
+                    .environmentObject(userVM)
             }
         }
     }
 }
+
 
