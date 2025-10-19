@@ -19,9 +19,15 @@ struct ResponseView: View {
                 if didSend {
                     Text("Your response was sent!").foregroundColor(.green)
                 } else {
-                    Text("Responding to: \(post.title)").font(.headline)
+                    Text("Responding to: \(post.title)")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+
                     TextField("Type your message...", text: $message)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .foregroundColor(.primary)
+                        .background(Color(UIColor.secondarySystemBackground))
+
                     Button("Send") {
                         onSend(message)
                         didSend = true
@@ -31,10 +37,9 @@ struct ResponseView: View {
                 }
             }
             .navigationTitle("Respond")
+            .padding()
+            .background(Color(UIColor.systemBackground))
         }
-        .background(Theme.background.ignoresSafeArea())
+        .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
     }
 }
-
-
-

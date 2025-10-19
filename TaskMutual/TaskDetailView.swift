@@ -17,11 +17,18 @@ struct TaskDetailView: View {
                 Text(task.title)
                     .font(.title2)
                     .fontWeight(.bold)
+                    .foregroundColor(.primary)
+
                 Text(task.description)
                     .font(.body)
+                    .foregroundColor(.primary)
+
                 Divider()
+
                 Text("Responses (\(task.responses.count))")
                     .font(.headline)
+                    .foregroundColor(.primary)
+
                 if task.responses.isEmpty {
                     Text("No responses yet.")
                         .foregroundColor(.gray)
@@ -30,8 +37,9 @@ struct TaskDetailView: View {
                     ForEach(task.responses) { response in
                         VStack(alignment: .leading, spacing: 8) {
                             Text(response.message)
+                                .foregroundColor(.primary)
                                 .padding()
-                                .background(Color.gray.opacity(0.09))
+                                .background(Color(UIColor.secondarySystemBackground))
                                 .cornerRadius(8)
                             HStack {
                                 Text("From: \(response.fromUserId)")
@@ -48,12 +56,12 @@ struct TaskDetailView: View {
                 }
             }
             .padding()
-            .background(Color.white)
+            .background(Color(UIColor.systemBackground))
             .cornerRadius(20)
             .shadow(color: Color.black.opacity(0.04), radius: 7, x: 0, y: 2)
             .padding()
         }
-        .background(Theme.background.ignoresSafeArea())
+        .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
         .navigationTitle("Task Details")
     }
 }

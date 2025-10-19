@@ -15,15 +15,15 @@ struct TaskCardView: View {
     var onRespond: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) { // <--- leading alignment here
+        VStack(alignment: .leading, spacing: 8) {
             Text(task.title)
                 .font(.title3)
                 .fontWeight(.semibold)
-                .foregroundColor(Theme.accent)
+                .foregroundColor(.primary)
             Text(task.description)
                 .font(.body)
                 .foregroundColor(.primary)
-                .multilineTextAlignment(.leading) // <--- Force leading text alignment
+                .multilineTextAlignment(.leading)
             HStack {
                 if !task.responses.isEmpty {
                     Text("💬 \(task.responses.count)")
@@ -38,8 +38,10 @@ struct TaskCardView: View {
             .padding(.top, 4)
         }
         .padding()
-        .background(Color.white)
-        .cornerRadius(15)
+        .background(
+            RoundedRectangle(cornerRadius: 15)
+                .fill(Color(UIColor.secondarySystemBackground))
+        )
         .shadow(color: Color.black.opacity(0.07), radius: 7, x: 0, y: 2)
         .contextMenu {
             Button("Edit", action: onEdit)
@@ -49,16 +51,6 @@ struct TaskCardView: View {
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
 
 
 
