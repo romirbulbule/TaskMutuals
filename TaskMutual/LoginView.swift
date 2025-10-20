@@ -14,6 +14,8 @@ struct LoginView: View {
     @State private var confirmPassword = ""
     @State private var confirmError = ""
     @State private var showSignUp = false
+    @State private var isLoading = false
+    @State private var showUsernameAlert = false
 
     var body: some View {
         VStack(spacing: 24) {
@@ -46,7 +48,7 @@ struct LoginView: View {
                     .submitLabel(showSignUp ? .next : .go)
                     .onSubmit {
                         if !showSignUp {
-                            authViewModel.signIn(email: email, password: password)
+                            signInAndFetchUsername()
                         }
                     }
 
@@ -84,13 +86,22 @@ struct LoginView: View {
             .padding(.horizontal, 10)
 
             Button(action: handleSignUpOrLogin) {
-                Text(showSignUp ? "Sign Up" : "Login")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Theme.accent)
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
+                if isLoading {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Theme.accent)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                } else {
+                    Text(showSignUp ? "Sign Up" : "Login")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Theme.accent)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                }
             }
             .padding(.top)
 
@@ -110,6 +121,13 @@ struct LoginView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.background.ignoresSafeArea())
+        .alert(isPresented: $showUsernameAlert) {
+            Alert(
+                title: Text("Username Required"),
+                message: Text("Could not fetch your username. Please ensure your profile is complete and try again."),
+                dismissButton: .default(Text("OK"))
+            )
+        }
     }
 
     private func handleSignUpOrLogin() {
@@ -119,9 +137,38 @@ struct LoginView: View {
                 confirmError = "Passwords do not match."
                 return
             }
-            authViewModel.signUp(email: email, password: password)
+            isLoading = true
+            authViewModel.signUp(email: email, password: password) { success in
+                if success {
+                    fetchUsernameAfterAuth()
+                } else {
+                    isLoading = false
+                }
+            }
         } else {
-            authViewModel.signIn(email: email, password: password)
+            signInAndFetchUsername()
+        }
+    }
+
+    private func signInAndFetchUsername() {
+        isLoading = true
+        authViewModel.signIn(email: email, password: password) { success in
+            if success {
+                fetchUsernameAfterAuth()
+            } else {
+                isLoading = false
+            }
+        }
+    }
+
+    private func fetchUsernameAfterAuth() {
+        UserService.shared.fetchAndStoreUsernameForCurrentUser { username in
+            isLoading = false
+            if let name = username, !name.isEmpty {
+                // Success: username fetched and cached; navigate or reload as needed.
+            } else {
+                showUsernameAlert = true
+            }
         }
     }
 }

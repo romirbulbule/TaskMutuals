@@ -15,7 +15,7 @@ struct MainFeedView: View {
     @State private var showEditTaskSheet = false
     @State private var showResponseSheet = false
     @State private var selectedTask: Task?
-
+    
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
@@ -106,9 +106,7 @@ struct MainFeedView: View {
             .sheet(isPresented: $showResponseSheet) {
                 if let task = selectedTask {
                     ResponseView(post: task) { message in
-                        // Replace next line with your actual user ID logic
-                        let currentUserId = "YOUR_AUTH_USER_ID"
-                        tasksVM.addResponse(to: task, fromUserId: currentUserId, message: message) {
+                        tasksVM.addResponse(to: task, message: message) {
                             showResponseSheet = false
                         }
                     }
@@ -118,7 +116,6 @@ struct MainFeedView: View {
         .background(Theme.background.ignoresSafeArea())
     }
 }
-
 
 
 

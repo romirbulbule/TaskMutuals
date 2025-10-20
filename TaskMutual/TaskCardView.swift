@@ -20,6 +20,9 @@ struct TaskCardView: View {
                 .font(.title3)
                 .fontWeight(.semibold)
                 .foregroundColor(.primary)
+            Text("By \(task.creatorUsername)")
+                .font(.caption)
+                .foregroundColor(.secondary)
             Text(task.description)
                 .font(.body)
                 .foregroundColor(.primary)
@@ -51,7 +54,6 @@ struct TaskCardView: View {
         }
     }
 }
-
 
 
 

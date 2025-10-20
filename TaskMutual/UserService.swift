@@ -1,10 +1,16 @@
+//
+//  UserService.swift
+//  TaskMutual
+//
+//  Created by Romir Bulbule on 10/19/25.
+//
+
 import Foundation
 import FirebaseAuth
 import FirebaseFirestore
 
 class UserService {
     static let shared = UserService()
-
     private init() {}
 
     func fetchAndStoreUsernameForCurrentUser(completion: ((String?) -> Void)? = nil) {
@@ -19,4 +25,10 @@ class UserService {
             completion?(username)
         }
     }
+
+    func clearUsernameCache() {
+        UserDefaults.standard.removeObject(forKey: "username")
+    }
 }
+
+

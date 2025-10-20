@@ -28,27 +28,33 @@ class AuthViewModel: ObservableObject {
         }
     }
 
-    func signUp(email: String, password: String) {
+    // Updated with completion support
+    func signUp(email: String, password: String, completion: ((Bool) -> Void)? = nil) {
         authError = nil
         Auth.auth().createUser(withEmail: email, password: password) { [weak self] result, error in
             DispatchQueue.main.async {
                 if let error = error {
                     self?.authError = error.localizedDescription
+                    completion?(false)
                 } else {
                     self?.isNewUser = true
+                    completion?(true)
                 }
             }
         }
     }
 
-    func signIn(email: String, password: String) {
+    // Updated with completion support
+    func signIn(email: String, password: String, completion: ((Bool) -> Void)? = nil) {
         authError = nil
         Auth.auth().signIn(withEmail: email, password: password) { [weak self] result, error in
             DispatchQueue.main.async {
                 if let error = error {
                     self?.authError = error.localizedDescription
+                    completion?(false)
                 } else {
                     self?.isNewUser = false
+                    completion?(true)
                 }
             }
         }
@@ -63,6 +69,8 @@ class AuthViewModel: ObservableObject {
                 self.authError = nil
                 userVM?.clearProfile()
             }
+            // Clear username cache on sign out
+            UserService.shared.clearUsernameCache()
         } catch {
             DispatchQueue.main.async {
                 self.authError = error.localizedDescription

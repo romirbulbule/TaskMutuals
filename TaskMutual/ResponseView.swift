@@ -22,12 +22,10 @@ struct ResponseView: View {
                     Text("Responding to: \(post.title)")
                         .font(.headline)
                         .foregroundColor(.primary)
-
                     TextField("Type your message...", text: $message)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
                         .foregroundColor(.primary)
                         .background(Color(UIColor.secondarySystemBackground))
-
                     Button("Send") {
                         onSend(message)
                         didSend = true
@@ -43,3 +41,4 @@ struct ResponseView: View {
         .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
     }
 }
+

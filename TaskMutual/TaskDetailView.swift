@@ -5,7 +5,6 @@
 //  Created by Romir Bulbule on 10/3/25.
 //
 
-
 import SwiftUI
 
 struct TaskDetailView: View {
@@ -18,17 +17,16 @@ struct TaskDetailView: View {
                     .font(.title2)
                     .fontWeight(.bold)
                     .foregroundColor(.primary)
-
+                Text("By \(task.creatorUsername)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
                 Text(task.description)
                     .font(.body)
                     .foregroundColor(.primary)
-
                 Divider()
-
                 Text("Responses (\(task.responses.count))")
                     .font(.headline)
                     .foregroundColor(.primary)
-
                 if task.responses.isEmpty {
                     Text("No responses yet.")
                         .foregroundColor(.gray)
@@ -42,7 +40,7 @@ struct TaskDetailView: View {
                                 .background(Color(UIColor.secondarySystemBackground))
                                 .cornerRadius(8)
                             HStack {
-                                Text("From: \(response.fromUserId)")
+                                Text("From: \(response.fromUsername)")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                                 Spacer()

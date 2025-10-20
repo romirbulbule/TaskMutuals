@@ -13,13 +13,16 @@ struct Task: Identifiable, Codable, Equatable {
     @DocumentID var id: String?
     var title: String
     var description: String
+    var creatorUserId: String
+    var creatorUsername: String
     var timestamp: Date = Date()
-    var responses: [Response] = [] // Support for responses
+    var responses: [Response] = []
 }
 
 struct Response: Codable, Identifiable, Equatable {
     var id: String = UUID().uuidString
     var fromUserId: String
+    var fromUsername: String
     var message: String
     var timestamp: Date = Date()
 }
