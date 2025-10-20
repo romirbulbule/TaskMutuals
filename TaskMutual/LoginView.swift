@@ -16,6 +16,7 @@ struct LoginView: View {
     @State private var showSignUp = false
     @State private var isLoading = false
     @State private var showUsernameAlert = false
+    @State private var usernameReady = false // control navigation
 
     var body: some View {
         VStack(spacing: 24) {
@@ -128,6 +129,9 @@ struct LoginView: View {
                 dismissButton: .default(Text("OK"))
             )
         }
+        .fullScreenCover(isPresented: $usernameReady) {
+            MainTabView()
+        }
     }
 
     private func handleSignUpOrLogin() {
@@ -165,7 +169,8 @@ struct LoginView: View {
         UserService.shared.fetchAndStoreUsernameForCurrentUser { username in
             isLoading = false
             if let name = username, !name.isEmpty {
-                // Success: username fetched and cached; navigate or reload as needed.
+                // Username is now cached for the session. Launch MainTabView or root app.
+                usernameReady = true  // triggers fullScreenCover to main UI
             } else {
                 showUsernameAlert = true
             }

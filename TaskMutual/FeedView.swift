@@ -23,6 +23,7 @@ struct FeedView: View {
                             NavigationLink(destination: TaskDetailView(task: task)) {
                                 TaskCardView(
                                     task: task,
+                                    currentUserId: tasksVM.currentUserId, // << key line!
                                     onEdit: { modalManager.showEdit(for: task) },
                                     onDelete: { tasksVM.removeTask(task) },
                                     onReport: { /* implement report logic here */ },
