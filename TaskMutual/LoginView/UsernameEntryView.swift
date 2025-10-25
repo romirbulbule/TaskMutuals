@@ -10,16 +10,33 @@ import SwiftUI
 struct UsernameEntryView: View {
     let firstName: String
     let lastName: String
+    let dateOfBirth: Date  // ← Add this
     @ObservedObject var userVM: UserViewModel
-    @State private var username = ""
-    @State private var error = ""
     var onFinish: () -> Void
+
+    @State private var username: String
+    @State private var error = ""
+
+    init(
+        firstName: String,
+        lastName: String,
+        username: String,
+        dateOfBirth: Date,  // ← Add this
+        userVM: UserViewModel,
+        onFinish: @escaping () -> Void
+    ) {
+        self.firstName = firstName
+        self.lastName = lastName
+        self._username = State(initialValue: username)
+        self.dateOfBirth = dateOfBirth  // ← Add this
+        self.userVM = userVM
+        self.onFinish = onFinish
+    }
 
     var body: some View {
         VStack(spacing: 32) {
             Text("Pick a Unique Username")
-                .font(.title2)
-                .bold()
+                .font(.title2).bold()
             TextField("Username", text: $username)
                 .autocapitalization(.none)
                 .padding()
@@ -29,7 +46,8 @@ struct UsernameEntryView: View {
                 userVM.createOrUpdateProfile(
                     firstName: firstName,
                     lastName: lastName,
-                    username: username
+                    username: username,
+                    dateOfBirth: dateOfBirth  // ← Add this
                 ) { result in
                     switch result {
                     case .success:

@@ -10,17 +10,10 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @EnvironmentObject var userVM: UserViewModel
-
+    
     var body: some View {
-        Group {
-            if authViewModel.isLoggedIn {
-                MainTabView()
-                    .environmentObject(authViewModel)
-                    .environmentObject(userVM)
-            } else {
-                LoginView()
-                    .environmentObject(authViewModel)
-            }
-        }
+        RootSwitcherView()
+            .environmentObject(authViewModel)
+            .environmentObject(userVM)
     }
 }

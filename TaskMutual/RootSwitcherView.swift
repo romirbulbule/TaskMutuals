@@ -6,57 +6,67 @@
 //
 
 import SwiftUI
+import FirebaseAuth
 
 struct RootSwitcherView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @EnvironmentObject var userVM: UserViewModel
-
-    @State private var firstName = ""
-    @State private var lastName = ""
-    @State private var didNameEntry = false
+    
+    @State private var waitingForVerification = false
     @State private var hasShownSplash = false
+    @State private var emailJustVerified = false
 
     var body: some View {
-        Group {
-            // Show splash only once before moving on
+        ZStack {
+            // DEBUG - see what's happening
+                   let _ = print("🔍 RootSwitcher - isLoggedIn: \(authViewModel.isLoggedIn), profile: \(userVM.profile?.username ?? "nil")")
+                   
+            // 1. Splash
             if !hasShownSplash {
                 SplashScreen()
                     .onAppear {
-                        // Simulate splash delay, then continue
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.7) {
                             hasShownSplash = true
                         }
                     }
             }
-            // Not logged in: show login
-            else if !authViewModel.isLoggedIn {
-                LoginView()
-            }
-            // New user onboarding flow
-            else if authViewModel.isNewUser && userVM.profile == nil && !didNameEntry {
-                NameEntryView { fname, lname in
-                    firstName = fname
-                    lastName = lname
-                    didNameEntry = true
-                }
-            }
-            else if authViewModel.isNewUser && userVM.profile == nil && didNameEntry {
-                UsernameEntryView(
-                    firstName: firstName,
-                    lastName: lastName,
-                    userVM: userVM,
-                    onFinish: {
-                        userVM.fetchUserProfile()
-                        authViewModel.isNewUser = false
-                        didNameEntry = false
-                        firstName = ""
-                        lastName = ""
+            
+            // 2. Waiting for email verification
+            else if waitingForVerification {
+                EmailVerificationWaitingView(
+                    onVerified: {
+                        emailJustVerified = true
+                        waitingForVerification = false
+                    },
+                    onCancel: {
+                        try? Auth.auth().signOut()
+                        waitingForVerification = false
+                        emailJustVerified = false
                     }
                 )
             }
-            // Main app (feed) — load profile data in background!
-            else if authViewModel.isLoggedIn {
-                ContentView()
+            
+            // 3. Email just verified OR logged in without profile - show ProfileSetup
+            else if (emailJustVerified || authViewModel.isLoggedIn) && userVM.profile == nil {
+
+                ProfileSetupView()
+                    .onAppear {
+                        if !emailJustVerified {
+                            userVM.fetchUserProfile()
+                        }
+                    }
+            }
+            
+            // 4. Not logged in - show Login/SignUp
+            else if !authViewModel.isLoggedIn {
+                LoginView(onEmailVerificationNeeded: {
+                    waitingForVerification = true
+                })
+            }
+            
+            // 5. Logged in with profile - show main app
+            else {
+                MainTabView()
                     .onAppear {
                         userVM.fetchUserProfile()
                     }
@@ -64,12 +74,10 @@ struct RootSwitcherView: View {
         }
         .onChange(of: authViewModel.isLoggedIn) { isLoggedIn in
             if isLoggedIn {
-                didNameEntry = false
-                firstName = ""
-                lastName = ""
                 userVM.fetchUserProfile()
             } else {
-                userVM.clearProfile()
+                emailJustVerified = false
+                waitingForVerification = false
             }
         }
     }

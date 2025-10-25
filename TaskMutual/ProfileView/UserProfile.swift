@@ -13,6 +13,7 @@ struct UserProfile: Identifiable, Codable {
     var firstName: String
     var lastName: String
     var username: String
+    var dateOfBirth: Date
 }
 
 
