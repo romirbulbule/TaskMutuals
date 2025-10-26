@@ -11,27 +11,39 @@ import FirebaseAuth
 struct RootSwitcherView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @EnvironmentObject var userVM: UserViewModel
-    
+
     @State private var waitingForVerification = false
     @State private var hasShownSplash = false
     @State private var emailJustVerified = false
+    @State private var minLoadingTimeReached = false
 
     var body: some View {
         ZStack {
-            // DEBUG - see what's happening
-                   let _ = print("🔍 RootSwitcher - isLoggedIn: \(authViewModel.isLoggedIn), profile: \(userVM.profile?.username ?? "nil")")
-                   
-            // 1. Splash
+            let _ = print("🔍 RootSwitcher - isLoggedIn: \(authViewModel.isLoggedIn), profile: \(userVM.profile?.username ?? "nil"), isLoadingProfile: \(userVM.isLoadingProfile)")
+
+            // Splash screen always when starting the app
             if !hasShownSplash {
                 SplashScreen()
                     .onAppear {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.7) {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                             hasShownSplash = true
                         }
                     }
             }
-            
-            // 2. Waiting for email verification
+            // Loading profile after login/sign-up ONLY IF still loading profile
+            else if authViewModel.isLoggedIn && (userVM.isLoadingProfile || !minLoadingTimeReached) {
+                CustomLoadingView()
+                    .onAppear {
+                        // Only start the timer once per loading event
+                        if !minLoadingTimeReached {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                                minLoadingTimeReached = true
+                                print("Timer fired!")
+                            }
+                        }
+                    }
+            }
+            // Email verification waiting
             else if waitingForVerification {
                 EmailVerificationWaitingView(
                     onVerified: {
@@ -45,10 +57,8 @@ struct RootSwitcherView: View {
                     }
                 )
             }
-            
-            // 3. Email just verified OR logged in without profile - show ProfileSetup
+            // Profile setup flow
             else if (emailJustVerified || authViewModel.isLoggedIn) && userVM.profile == nil {
-
                 ProfileSetupView()
                     .onAppear {
                         if !emailJustVerified {
@@ -56,26 +66,27 @@ struct RootSwitcherView: View {
                         }
                     }
             }
-            
-            // 4. Not logged in - show Login/SignUp
+            // Login for not-logged in users
             else if !authViewModel.isLoggedIn {
-                LoginView(onEmailVerificationNeeded: {
-                    waitingForVerification = true
-                })
+                LoginView(
+                    onEmailVerificationNeeded: {
+                        waitingForVerification = true
+                    }
+                )
             }
-            
-            // 5. Logged in with profile - show main app
+            // Main app only if logged in and profile loaded
             else {
                 MainTabView()
-                    .onAppear {
-                        userVM.fetchUserProfile()
-                    }
             }
         }
         .onChange(of: authViewModel.isLoggedIn) { isLoggedIn in
             if isLoggedIn {
+                // New login or fetch: reset for next loading session
+                minLoadingTimeReached = false
                 userVM.fetchUserProfile()
             } else {
+                // Reset when logged out
+                minLoadingTimeReached = false
                 emailJustVerified = false
                 waitingForVerification = false
             }

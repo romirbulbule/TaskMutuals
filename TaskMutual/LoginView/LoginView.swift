@@ -11,6 +11,7 @@ import FirebaseAuth
 struct LoginView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     var onEmailVerificationNeeded: () -> Void
+    var onLoginSuccess: (() -> Void)? = nil // Now supported!
     
     @State private var email = ""
     @State private var password = ""
@@ -115,6 +116,7 @@ struct LoginView: View {
             isLoading = false
             if success {
                 authViewModel.isNewUser = false
+                onLoginSuccess?() // <--- Call on successful login!
             }
         }
     }

@@ -21,6 +21,8 @@ extension UserVMError: LocalizedError {
 
 class UserViewModel: ObservableObject {
     @Published var profile: UserProfile?
+    @Published var isLoadingProfile: Bool = false
+    
     private let db = Firestore.firestore()
     private let auth = Auth.auth()
     
@@ -41,22 +43,17 @@ class UserViewModel: ObservableObject {
         let usersRef = db.collection("users")
         let usernamesRef = db.collection("usernames")
         
-        // Check if username is already taken
         usernamesRef.document(lowercaseUsername).getDocument { document, error in
             if let error = error {
                 completion(.failure(.message(error.localizedDescription)))
                 return
             }
-            
-            // If username doc exists and belongs to someone else, it's taken
             if let document = document, document.exists,
                let existingUID = document.data()?["uid"] as? String,
                existingUID != userID {
                 completion(.failure(.message("That Username already exists. Please use another one.")))
                 return
             }
-            
-            // Create the profile
             let profile = UserProfile(
                 id: userID,
                 firstName: firstName,
@@ -64,11 +61,7 @@ class UserViewModel: ObservableObject {
                 username: username,
                 dateOfBirth: dateOfBirth
             )
-            
-            // Use a batch write to ensure atomicity
             let batch = self.db.batch()
-            
-            // Write to users collection
             let userRef = usersRef.document(userID)
             do {
                 let userData = try Firestore.Encoder().encode(profile)
@@ -77,24 +70,14 @@ class UserViewModel: ObservableObject {
                 completion(.failure(.message(error.localizedDescription)))
                 return
             }
-            
-            // Reserve the username
             let usernameRef = usernamesRef.document(lowercaseUsername)
             batch.setData(["uid": userID, "username": username], forDocument: usernameRef)
-            
-            // Commit the batch
-            // Commit the batch
             batch.commit { error in
                 if let error = error {
                     completion(.failure(.message(error.localizedDescription)))
                 } else {
-                    // Capture profile before dispatch
                     let createdProfile = profile
-                    
-                    // ✅ SAVE USERNAME TO USERDEFAULTS
                     UserDefaults.standard.set(username, forKey: "username")
-                    
-                    // Update on main thread to trigger SwiftUI
                     DispatchQueue.main.async {
                         self.profile = createdProfile
                     }
@@ -104,22 +87,24 @@ class UserViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Fetch User Profile
+    // MARK: - Fetch User Profile (with debug logs/timing)
     func fetchUserProfile() {
+        print("DEBUG: currentUser: \(String(describing: auth.currentUser)), uid: \(String(describing: auth.currentUser?.uid))")
         guard let userId = auth.currentUser?.uid else {
             DispatchQueue.main.async {
                 self.profile = nil
+                self.isLoadingProfile = false
             }
             return
         }
-        
-        DispatchQueue.main.async {
-            print("🔍 RootSwitcher - isLoggedIn: \(self.auth.currentUser != nil), profile: \(self.profile?.username ?? "nil")")
-        }
-        
+
+        self.isLoadingProfile = true
+        let start = Date()
         db.collection("users").document(userId).getDocument { [weak self] snapshot, error in
+            let elapsed = Date().timeIntervalSince(start)
+            print("Profile loaded in \(elapsed) seconds")
             guard let self = self else { return }
-            
+            defer { DispatchQueue.main.async { self.isLoadingProfile = false } }
             if let error = error {
                 print("Error fetching profile: \(error)")
                 DispatchQueue.main.async {
@@ -127,20 +112,16 @@ class UserViewModel: ObservableObject {
                 }
                 return
             }
-            
             guard let snapshot = snapshot, snapshot.exists else {
+                print("No profile found for user \(userId)")
                 DispatchQueue.main.async {
                     self.profile = nil
                 }
                 return
             }
-            
             do {
                 let loadedProfile = try snapshot.data(as: UserProfile.self)
-                
-                // ✅ ADD THIS LINE - Save username to UserDefaults when loading profile
                 UserDefaults.standard.set(loadedProfile.username, forKey: "username")
-                
                 DispatchQueue.main.async {
                     self.profile = loadedProfile
                 }
@@ -153,10 +134,9 @@ class UserViewModel: ObservableObject {
         }
     }
 
-    
-    // MARK: - Clear Profile
     func clearProfile() {
         self.profile = nil
+        self.isLoadingProfile = false
     }
     
     // MARK: - Delete Account
@@ -165,7 +145,6 @@ class UserViewModel: ObservableObject {
             completion(.failure(NSError(domain: "No user", code: 0)))
             return
         }
-        
         db.collection("users").document(uid).getDocument { document, error in
             guard let document = document,
                   let userData = document.data(),
@@ -173,19 +152,16 @@ class UserViewModel: ObservableObject {
                 completion(.failure(NSError(domain: "Username not found", code: 0)))
                 return
             }
-            
             let batch = self.db.batch()
             let userRef = self.db.collection("users").document(uid)
             let usernameRef = self.db.collection("usernames").document(username.lowercased())
             batch.deleteDocument(userRef)
             batch.deleteDocument(usernameRef)
-            
             batch.commit { batchError in
                 if let batchError = batchError {
                     completion(.failure(batchError))
                     return
                 }
-                
                 Auth.auth().currentUser?.delete { error in
                     if let error = error {
                         completion(.failure(error))

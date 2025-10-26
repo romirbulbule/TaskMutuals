@@ -17,12 +17,7 @@ struct TaskMutualApp: App {
 
     init() {
         FirebaseApp.configure()
-        
-        // ⚠️ TEMPORARY: Force logout on app launch for testing the full flow
-        // ⚠️ REMOVE THESE 2 LINES AFTER YOU CONFIRM THE FLOW WORKS CORRECTLY
-        try? Auth.auth().signOut()
-        print("🔓 Force logout for testing - REMEMBER TO REMOVE THIS")
-        
+
         UITabBar.appearance().barTintColor = UIColor(named: "BrandBackground")
         UITabBar.appearance().backgroundColor = UIColor(named: "BrandBackground")
         UITabBar.appearance().unselectedItemTintColor = UIColor.white.withAlphaComponent(0.5)
