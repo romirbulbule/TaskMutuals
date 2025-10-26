@@ -22,7 +22,11 @@ extension UserVMError: LocalizedError {
 class UserViewModel: ObservableObject {
     @Published var profile: UserProfile?
     @Published var isLoadingProfile: Bool = false
-    
+
+    // For chat user search:
+    @Published var searchText: String = ""
+    @Published var allUsers: [UserProfile] = []
+
     private let db = Firestore.firestore()
     private let auth = Auth.auth()
     
@@ -49,8 +53,8 @@ class UserViewModel: ObservableObject {
                 return
             }
             if let document = document, document.exists,
-               let existingUID = document.data()?["uid"] as? String,
-               existingUID != userID {
+                let existingUID = document.data()?["uid"] as? String,
+                existingUID != userID {
                 completion(.failure(.message("That Username already exists. Please use another one.")))
                 return
             }
@@ -175,4 +179,28 @@ class UserViewModel: ObservableObject {
             }
         }
     }
-}
+    
+    // ==== ADDED FOR CHAT SEARCH ===========
+    /// Fetch all users except the logged-in user, for chat/search
+        func fetchAllUsers() {
+            guard let currentUserID = auth.currentUser?.uid else { return }
+            db.collection("users").getDocuments { [weak self] snapshot, error in
+                guard let documents = snapshot?.documents else { return }
+                DispatchQueue.main.async {
+                    self?.allUsers = documents.compactMap { doc in
+                        let user = try? doc.data(as: UserProfile.self)
+                        return (user?.id == currentUserID) ? nil : user
+                    }
+                }
+            }
+        }
+
+        /// Returns filtered user list for search UI
+        var filteredUsers: [UserProfile] {
+            if searchText.isEmpty {
+                return allUsers
+            } else {
+                return allUsers.filter { $0.username.lowercased().contains(searchText.lowercased()) }
+            }
+        }
+    }

@@ -22,6 +22,12 @@ struct MainTabView: View {
                     Image(systemName: "magnifyingglass")
                     Text("Search")
                 }
+            // Pass userVM from the shared environment.
+            ChatView()
+                .environmentObject(userVM)
+                .tabItem {
+                    Label("Chat", systemImage: "message")
+                }
             ProfileView()
                 .tabItem {
                     Image(systemName: "person.crop.circle")
@@ -30,4 +36,3 @@ struct MainTabView: View {
         }
     }
 }
-
