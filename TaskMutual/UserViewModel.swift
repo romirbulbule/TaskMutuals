@@ -205,30 +205,45 @@ class UserViewModel: ObservableObject {
         }
     }
     
-    // ✅ Functions should be OUTSIDE filteredUsers, directly on your class
+    // Upload profile image
     func uploadProfileImage(_ image: UIImage, completion: @escaping (Result<String, Error>) -> Void) {
-        guard let uid = auth.currentUser?.uid,
-              let imageData = image.jpegData(compressionQuality: 0.5) else {
-            completion(.failure(NSError(domain: "Image Error", code: 0)))
+        guard let uid = auth.currentUser?.uid else {
+            completion(.failure(NSError(domain: "No UID", code: 0)))
             return
         }
+
+        // Try JPEG, fallback to PNG
+        let imageData: Data?
+        if let jpeg = image.jpegData(compressionQuality: 0.5) {
+            imageData = jpeg
+        } else if let png = image.pngData() {
+            imageData = png
+        } else {
+            completion(.failure(NSError(domain: "Image format error", code: 0)))
+            return
+        }
+
         let ref = Storage.storage().reference().child("profileImages/\(uid).jpg")
-        ref.putData(imageData) { _, error in
+        ref.putData(imageData!, metadata: nil) { metadata, error in
             if let error = error {
                 completion(.failure(error))
-            } else {
-                ref.downloadURL { url, error in
-                    if let url = url {
-                        self.updateProfileImageURL(url: url.absoluteString)
-                        completion(.success(url.absoluteString))
-                    } else {
-                        completion(.failure(error ?? NSError(domain: "URL error", code: 0)))
-                    }
+                return
+            }
+            ref.downloadURL { url, error in
+                if let error = error {
+                    completion(.failure(error))
+                    return
+                }
+                if let url = url {
+                    self.updateProfileImageURL(url: url.absoluteString)
+                    completion(.success(url.absoluteString))
+                } else {
+                    completion(.failure(NSError(domain: "Could not get download URL", code: 0)))
                 }
             }
         }
     }
-    
+
     func updateProfileImageURL(url: String) {
         guard let uid = auth.currentUser?.uid else { return }
         db.collection("users").document(uid).updateData(["profileImageURL": url]) { _ in
@@ -237,7 +252,8 @@ class UserViewModel: ObservableObject {
             }
         }
     }
-    
+
+    // MARK: - Update Bio (fixed)
     func updateBio(_ bio: String, completion: (() -> Void)? = nil) {
         guard let uid = auth.currentUser?.uid else { return }
         db.collection("users").document(uid).updateData(["bio": bio]) { _ in
@@ -248,4 +264,3 @@ class UserViewModel: ObservableObject {
         }
     }
 }
-    
