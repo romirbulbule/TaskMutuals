@@ -13,6 +13,7 @@ import FirebaseAuth  // ← Added this import for Auth.auth()
 struct TaskMutualApp: App {
     @StateObject private var authViewModel = AuthViewModel()
     @StateObject private var userVM = UserViewModel()
+    @StateObject private var tasksVM = TasksViewModel()
     @State private var showSplash = true
 
     init() {
@@ -29,6 +30,8 @@ struct TaskMutualApp: App {
             if showSplash {
                 SplashScreen()
                     .environmentObject(authViewModel)
+                    .environmentObject(userVM)
+                    .environmentObject(tasksVM)
                     .onAppear {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                             showSplash = false
@@ -38,6 +41,7 @@ struct TaskMutualApp: App {
                 RootSwitcherView()
                     .environmentObject(authViewModel)
                     .environmentObject(userVM)
+                    .environmentObject(tasksVM)
             }
         }
     }

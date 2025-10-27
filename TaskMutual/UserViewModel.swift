@@ -8,6 +8,7 @@
 import Foundation
 import FirebaseFirestore
 import FirebaseAuth
+import FirebaseStorage
 
 enum UserVMError: Error {
     case message(String)
@@ -22,11 +23,11 @@ extension UserVMError: LocalizedError {
 class UserViewModel: ObservableObject {
     @Published var profile: UserProfile?
     @Published var isLoadingProfile: Bool = false
-
+    
     // For chat user search:
     @Published var searchText: String = ""
     @Published var allUsers: [UserProfile] = []
-
+    
     private let db = Firestore.firestore()
     private let auth = Auth.auth()
     
@@ -53,8 +54,8 @@ class UserViewModel: ObservableObject {
                 return
             }
             if let document = document, document.exists,
-                let existingUID = document.data()?["uid"] as? String,
-                existingUID != userID {
+               let existingUID = document.data()?["uid"] as? String,
+               existingUID != userID {
                 completion(.failure(.message("That Username already exists. Please use another one.")))
                 return
             }
@@ -101,7 +102,7 @@ class UserViewModel: ObservableObject {
             }
             return
         }
-
+        
         self.isLoadingProfile = true
         let start = Date()
         db.collection("users").document(userId).getDocument { [weak self] snapshot, error in
@@ -137,7 +138,7 @@ class UserViewModel: ObservableObject {
             }
         }
     }
-
+    
     func clearProfile() {
         self.profile = nil
         self.isLoadingProfile = false
@@ -182,25 +183,69 @@ class UserViewModel: ObservableObject {
     
     // ==== ADDED FOR CHAT SEARCH ===========
     /// Fetch all users except the logged-in user, for chat/search
-        func fetchAllUsers() {
-            guard let currentUserID = auth.currentUser?.uid else { return }
-            db.collection("users").getDocuments { [weak self] snapshot, error in
-                guard let documents = snapshot?.documents else { return }
-                DispatchQueue.main.async {
-                    self?.allUsers = documents.compactMap { doc in
-                        let user = try? doc.data(as: UserProfile.self)
-                        return (user?.id == currentUserID) ? nil : user
+    func fetchAllUsers() {
+        guard let currentUserID = auth.currentUser?.uid else { return }
+        db.collection("users").getDocuments { [weak self] snapshot, error in
+            guard let documents = snapshot?.documents else { return }
+            DispatchQueue.main.async {
+                self?.allUsers = documents.compactMap { doc in
+                    let user = try? doc.data(as: UserProfile.self)
+                    return (user?.id == currentUserID) ? nil : user
+                }
+            }
+        }
+    }
+    
+    /// Returns filtered user list for search UI
+    var filteredUsers: [UserProfile] {
+        if searchText.isEmpty {
+            return allUsers
+        } else {
+            return allUsers.filter { $0.username.lowercased().contains(searchText.lowercased()) }
+        }
+    }
+    
+    // ✅ Functions should be OUTSIDE filteredUsers, directly on your class
+    func uploadProfileImage(_ image: UIImage, completion: @escaping (Result<String, Error>) -> Void) {
+        guard let uid = auth.currentUser?.uid,
+              let imageData = image.jpegData(compressionQuality: 0.5) else {
+            completion(.failure(NSError(domain: "Image Error", code: 0)))
+            return
+        }
+        let ref = Storage.storage().reference().child("profileImages/\(uid).jpg")
+        ref.putData(imageData) { _, error in
+            if let error = error {
+                completion(.failure(error))
+            } else {
+                ref.downloadURL { url, error in
+                    if let url = url {
+                        self.updateProfileImageURL(url: url.absoluteString)
+                        completion(.success(url.absoluteString))
+                    } else {
+                        completion(.failure(error ?? NSError(domain: "URL error", code: 0)))
                     }
                 }
             }
         }
-
-        /// Returns filtered user list for search UI
-        var filteredUsers: [UserProfile] {
-            if searchText.isEmpty {
-                return allUsers
-            } else {
-                return allUsers.filter { $0.username.lowercased().contains(searchText.lowercased()) }
+    }
+    
+    func updateProfileImageURL(url: String) {
+        guard let uid = auth.currentUser?.uid else { return }
+        db.collection("users").document(uid).updateData(["profileImageURL": url]) { _ in
+            DispatchQueue.main.async {
+                self.profile?.profileImageURL = url
             }
         }
     }
+    
+    func updateBio(_ bio: String, completion: (() -> Void)? = nil) {
+        guard let uid = auth.currentUser?.uid else { return }
+        db.collection("users").document(uid).updateData(["bio": bio]) { _ in
+            DispatchQueue.main.async {
+                self.profile?.bio = bio
+                completion?()
+            }
+        }
+    }
+}
+    

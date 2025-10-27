@@ -17,6 +17,7 @@ struct Task: Identifiable, Codable, Equatable {
     var creatorUsername: String
     var timestamp: Date = Date()
     var responses: [Response] = []
+    var isArchived: Bool = false
 }
 
 struct Response: Codable, Identifiable, Equatable {

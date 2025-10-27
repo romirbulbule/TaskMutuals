@@ -15,9 +15,9 @@ struct UserProfile: Identifiable, Codable {
     var lastName: String
     var username: String
     var dateOfBirth: Date
+    var bio: String? // <- new
+    var profileImageURL: String? // <- new
 }
-
-
 
 
 

@@ -11,129 +11,256 @@ import FirebaseAuth
 struct ProfileView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @EnvironmentObject var userVM: UserViewModel
+    @EnvironmentObject var tasksVM: TasksViewModel
 
+    @State private var showMenu = false
     @State private var showDeleteConfirmation = false
     @State private var showLogoutConfirmation = false
-    @State private var isDeletingAccount = false
-
-    // New for password prompt
     @State private var showPasswordPrompt = false
     @State private var password = ""
     @State private var deleteErrorMessage = ""
     @State private var showDeleteSuccess = false
+    @State private var isDeletingAccount = false
+    @State private var bioDraft: String = ""
+    @State private var isEditingBio = false
+    @State private var showImagePicker = false
+    @State private var inputImage: UIImage?
+    @State private var updateStatus: String = ""
+    @State private var isEditingProfile = false
 
     var body: some View {
         ZStack {
             Theme.background.ignoresSafeArea()
-            
-            ScrollView {
-                VStack(spacing: 24) {
-                    if let profile = userVM.profile {
-                        // Profile Header
-                        VStack(spacing: 12) {
-                            Circle()
-                                .fill(Theme.accent)
-                                .frame(width: 100, height: 100)
-                                .overlay(
-                                    Text("\(profile.firstName.prefix(1))\(profile.lastName.prefix(1))")
-                                        .font(.system(size: 36, weight: .bold))
-                                        .foregroundColor(.white)
-                                )
-                            
-                            Text("\(profile.firstName) \(profile.lastName)")
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .foregroundColor(.white)
-                            
-                            Text("@\(profile.username)")
-                                .font(.headline)
-                                .foregroundColor(.white.opacity(0.8))
-                        }
-                        .padding(.top, 40)
-                        
-                        // Account Actions
-                        VStack(spacing: 16) {
-                            Button(action: { showLogoutConfirmation = true }) {
-                                HStack {
-                                    Image(systemName: "arrow.right.square")
-                                    Text("Log Out")
-                                    Spacer()
-                                }
-                                .padding()
-                                .frame(maxWidth: .infinity)
-                                .background(Color.white.opacity(0.15))
-                                .foregroundColor(.white)
-                                .cornerRadius(12)
+            VStack(spacing: 0) {
+                // --- Top section: Profile pic, name, stats, hamburger ---
+                if let profile = userVM.profile {
+                    HStack(alignment: .top, spacing: 16) {
+                        // Profile Picture (left)
+                        Button {
+                            if isEditingProfile {
+                                showImagePicker = true
                             }
-                            
-                            Button(action: { showDeleteConfirmation = true }) {
-                                HStack {
-                                    Image(systemName: "trash")
-                                    Text("Delete Account")
-                                    Spacer()
+                        } label: {
+                            ZStack {
+                                if let urlString = profile.profileImageURL,
+                                   let url = URL(string: urlString) {
+                                    AsyncImage(url: url) { phase in
+                                        switch phase {
+                                        case .empty: ProgressView()
+                                        case .success(let image): image.resizable()
+                                        case .failure(_): Image(systemName: "person.crop.circle.fill").resizable().foregroundColor(.gray)
+                                        @unknown default: Image(systemName: "person.crop.circle.fill").resizable().foregroundColor(.gray)
+                                        }
+                                    }
+                                    .clipShape(Circle())
+                                } else {
+                                    Image(systemName: "person.crop.circle.fill")
+                                        .resizable().foregroundColor(.gray)
                                 }
-                                .padding()
-                                .frame(maxWidth: .infinity)
-                                .background(Color.red.opacity(0.2))
-                                .foregroundColor(.red)
-                                .cornerRadius(12)
+                            }
+                            .frame(width: 86, height: 86)
+                            .overlay(Circle().stroke(Theme.accent, lineWidth: 3))
+                        }
+                        .disabled(!isEditingProfile)
+                        .sheet(isPresented: $showImagePicker) { ImagePicker(image: $inputImage) }
+                        .onChange(of: inputImage) { img in
+                            if let img = img {
+                                userVM.uploadProfileImage(img) { result in
+                                    switch result {
+                                    case .success(_): updateStatus = "Profile photo updated."
+                                    case .failure(let err): updateStatus = err.localizedDescription
+                                    }
+                                }
                             }
                         }
-                        .padding(.horizontal, 24)
-                        .padding(.top, 32)
-                    }
 
-                    if !deleteErrorMessage.isEmpty {
-                        Text(deleteErrorMessage)
-                            .foregroundColor(.red)
-                            .padding(.horizontal)
-                            .multilineTextAlignment(.center)
+                        // Name and Stats (middle/right)
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                // Name
+                                Text("\(profile.firstName) \(profile.lastName)")
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.white)
+                                Spacer()
+                                // Hamburger menu aligned with name
+                                Button(action: { showMenu.toggle() }) {
+                                    Image(systemName: "line.3.horizontal")
+                                        .font(.title2)
+                                        .foregroundColor(Theme.accent)
+                                }
+                            }
+
+                            // Stats row - Tasks Posted / Tasks Archived
+                            HStack(spacing: 40) {
+                                VStack {
+                                    Text("\(tasksVM.tasks.filter { $0.creatorUserId == profile.id }.count)")
+                                        .font(.title3).bold()
+                                        .foregroundColor(.white)
+                                    Text("Tasks Posted")
+                                        .font(.caption)
+                                        .foregroundColor(.white.opacity(0.7))
+                                }
+                                VStack {
+                                    Text("\(tasksVM.tasks.filter { $0.creatorUserId == profile.id && $0.isArchived }.count)")
+                                        .font(.title3).bold()
+                                        .foregroundColor(.white)
+                                    Text("Tasks Archived")
+                                        .font(.caption)
+                                        .foregroundColor(.white.opacity(0.7))
+                                }
+                                Spacer()
+                            }
+                        }
                     }
-                    
-                    Spacer()
+                    .padding(.top, 20)
+                    .padding(.horizontal, 20)
+
+                    // --- Bio section (full width below profile) ---
+                    VStack(alignment: .leading, spacing: 8) {
+                        if isEditingBio && isEditingProfile {
+                            TextEditor(text: $bioDraft)
+                                .frame(height: 60)
+                                .background(Color.white.opacity(0.20))
+                                .cornerRadius(10)
+                                .foregroundColor(.black)
+                            HStack {
+                                Button("Cancel") {
+                                    bioDraft = profile.bio ?? ""
+                                    isEditingBio = false
+                                }.foregroundColor(.red)
+                                Spacer()
+                                Button("Save") {
+                                    userVM.updateBio(bioDraft) {
+                                        updateStatus = "Bio updated."
+                                        isEditingBio = false
+                                    }
+                                }
+                                .bold()
+                                .foregroundColor(Theme.accent)
+                            }
+                        } else {
+                            if let bio = profile.bio, !bio.isEmpty {
+                                Text(bio)
+                                    .font(.body)
+                                    .foregroundColor(.white.opacity(0.92))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }
+                    }
+                    .padding(.top, 12)
+                    .padding(.horizontal, 20)
+
+                    // --- Button Row ---
+                    HStack(spacing: 16) {
+                        Button(action: {
+                            if isEditingProfile {
+                                // Save profile changes
+                                isEditingProfile = false
+                                isEditingBio = false
+                            } else {
+                                // Enter edit mode
+                                isEditingProfile = true
+                                bioDraft = profile.bio ?? ""
+                            }
+                        }) {
+                            Text(isEditingProfile ? "Done" : "Edit Profile")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                                .background(Theme.accent)
+                                .cornerRadius(14)
+                                .shadow(color: Theme.accent.opacity(0.18), radius: 4, x: 0, y: 2)
+                        }
+                        
+                        if isEditingProfile {
+                            Button(action: {
+                                isEditingBio = true
+                            }) {
+                                Text("Edit Bio")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(Theme.accent)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .background(Color.white.opacity(0.14))
+                                    .cornerRadius(14)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 14)
+                                            .stroke(Theme.accent, lineWidth: 1)
+                                    )
+                            }
+                        } else {
+                            Button(action: {
+                                updateStatus = "Profile shared!"
+                            }) {
+                                Text("Share Profile")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(Theme.accent)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .background(Color.white.opacity(0.14))
+                                    .cornerRadius(14)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 14)
+                                            .stroke(Theme.accent, lineWidth: 1)
+                                    )
+                                    .shadow(color: Theme.accent.opacity(0.10), radius: 2, x: 0, y: 1)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
                 }
+
+                if !updateStatus.isEmpty {
+                    Text(updateStatus)
+                        .foregroundColor(.orange)
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+                        .multilineTextAlignment(.center)
+                }
+
+                Spacer()
             }
-        }
-        .alert("Log Out?", isPresented: $showLogoutConfirmation) {
-            Button("Cancel", role: .cancel) { }
-            Button("Log Out", role: .destructive) {
-                authViewModel.signOut()
+            // ------ Hamburger Menu Modal -------
+            if showMenu {
+                Color.black.opacity(0.5)
+                    .ignoresSafeArea()
+                    .onTapGesture { showMenu = false }
+                VStack(spacing: 24) {
+                    Text("Account Settings")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                    Button(action: { showLogoutConfirmation = true }) {
+                        HStack {
+                            Image(systemName: "arrow.right.square")
+                            Text("Log Out")
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                    }
+                    Button(action: { showDeleteConfirmation = true }) {
+                        HStack {
+                            Image(systemName: "trash")
+                            Text("Delete Account")
+                        }
+                        .foregroundColor(.red)
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+                .padding(32)
+                .background(Theme.background.opacity(0.92))
+                .cornerRadius(20)
+                .frame(maxWidth: 320)
+                .padding(.top, 80)
+                .shadow(radius: 10)
             }
-        } message: {
-            Text("Are you sure you want to log out?")
-        }
-        // Step 1: Ask if sure, then present password prompt
-        .alert("Delete Account?", isPresented: $showDeleteConfirmation) {
-            Button("Cancel", role: .cancel) { }
-            Button("Continue", role: .destructive) {
-                showPasswordPrompt = true
-            }
-        } message: {
-            Text("This will permanently delete your account and all associated data. This action cannot be undone.")
-        }
-        // Step 2: Prompt for password
-        .alert("Confirm Deletion", isPresented: $showPasswordPrompt, actions: {
-            SecureField("Password", text: $password)
-            Button("Delete", role: .destructive) {
-                handleDeleteAccount()
-            }
-            Button("Cancel", role: .cancel) { password = "" }
-        }, message: {
-            Text("Please enter your password to confirm account deletion.")
-        })
-        // Step 3: Success message
-        .alert("Account Deleted", isPresented: $showDeleteSuccess) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("Your account was deleted successfully. You have been signed out.")
-        }
-        .overlay {
             if isDeletingAccount {
                 ZStack {
                     Color.black.opacity(0.5).ignoresSafeArea()
                     VStack(spacing: 16) {
-                        ProgressView()
-                            .scaleEffect(1.5)
+                        ProgressView().scaleEffect(1.5)
                         Text("Deleting account...")
                             .foregroundColor(.white)
                     }
@@ -143,8 +270,39 @@ struct ProfileView: View {
                 }
             }
         }
+        // ===== Attach all modifiers directly to ZStack here! =====
+        .alert("Log Out?", isPresented: $showLogoutConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Log Out", role: .destructive) {
+                authViewModel.signOut()
+                showMenu = false
+            }
+        } message: {
+            Text("Are you sure you want to log out?")
+        }
+        .alert("Delete Account?", isPresented: $showDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Continue", role: .destructive) {
+                showPasswordPrompt = true
+            }
+        } message: {
+            Text("This will permanently delete your account and all associated data. This action cannot be undone.")
+        }
+        .alert("Confirm Deletion", isPresented: $showPasswordPrompt, actions: {
+            SecureField("Password", text: $password)
+            Button("Delete", role: .destructive) {
+                handleDeleteAccount()
+            }
+            Button("Cancel", role: .cancel) { password = "" }
+        }, message: {
+            Text("Please enter your password to confirm account deletion.")
+        })
+        .alert("Account Deleted", isPresented: $showDeleteSuccess) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Your account was deleted successfully. You have been signed out.")
+        }
     }
-    
     private func handleDeleteAccount() {
         isDeletingAccount = true
         deleteErrorMessage = ""
@@ -154,7 +312,7 @@ struct ProfileView: View {
             switch result {
             case .success:
                 showDeleteSuccess = true
-                // Optionally reset navigation/root here!
+                showMenu = false
             case .failure(let error):
                 deleteErrorMessage = error.localizedDescription
             }
