@@ -11,9 +11,16 @@ import FirebaseAuth
 struct ProfileView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @EnvironmentObject var userVM: UserViewModel
+
     @State private var showDeleteConfirmation = false
     @State private var showLogoutConfirmation = false
     @State private var isDeletingAccount = false
+
+    // New for password prompt
+    @State private var showPasswordPrompt = false
+    @State private var password = ""
+    @State private var deleteErrorMessage = ""
+    @State private var showDeleteSuccess = false
 
     var body: some View {
         ZStack {
@@ -75,6 +82,13 @@ struct ProfileView: View {
                         .padding(.horizontal, 24)
                         .padding(.top, 32)
                     }
+
+                    if !deleteErrorMessage.isEmpty {
+                        Text(deleteErrorMessage)
+                            .foregroundColor(.red)
+                            .padding(.horizontal)
+                            .multilineTextAlignment(.center)
+                    }
                     
                     Spacer()
                 }
@@ -88,13 +102,30 @@ struct ProfileView: View {
         } message: {
             Text("Are you sure you want to log out?")
         }
+        // Step 1: Ask if sure, then present password prompt
         .alert("Delete Account?", isPresented: $showDeleteConfirmation) {
             Button("Cancel", role: .cancel) { }
-            Button("Delete", role: .destructive) {
-                handleDeleteAccount()
+            Button("Continue", role: .destructive) {
+                showPasswordPrompt = true
             }
         } message: {
             Text("This will permanently delete your account and all associated data. This action cannot be undone.")
+        }
+        // Step 2: Prompt for password
+        .alert("Confirm Deletion", isPresented: $showPasswordPrompt, actions: {
+            SecureField("Password", text: $password)
+            Button("Delete", role: .destructive) {
+                handleDeleteAccount()
+            }
+            Button("Cancel", role: .cancel) { password = "" }
+        }, message: {
+            Text("Please enter your password to confirm account deletion.")
+        })
+        // Step 3: Success message
+        .alert("Account Deleted", isPresented: $showDeleteSuccess) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Your account was deleted successfully. You have been signed out.")
         }
         .overlay {
             if isDeletingAccount {
@@ -116,15 +147,17 @@ struct ProfileView: View {
     
     private func handleDeleteAccount() {
         isDeletingAccount = true
-        authViewModel.deleteAccountAndAllData(userVM: userVM) { result in
+        deleteErrorMessage = ""
+        authViewModel.deleteAccountAndAllData(userVM: userVM, password: password) { result in
             isDeletingAccount = false
+            password = ""
             switch result {
             case .success:
-                print("Account deleted successfully")
+                showDeleteSuccess = true
+                // Optionally reset navigation/root here!
             case .failure(let error):
-                print("Failed to delete account: \(error.localizedDescription)")
+                deleteErrorMessage = error.localizedDescription
             }
         }
     }
 }
-

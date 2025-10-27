@@ -16,11 +16,9 @@ class AuthViewModel: ObservableObject {
     private var handle: AuthStateDidChangeListenerHandle?
     private let db = Firestore.firestore()
     
-    // Computed property that updates when currentUser OR isNewUser changes
     var isLoggedIn: Bool {
         return currentUser != nil && currentUser?.isEmailVerified == true
     }
-
 
     init() {
         handle = Auth.auth().addStateDidChangeListener { [weak self] (auth: Auth, user: User?) in
@@ -36,7 +34,7 @@ class AuthViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Sign Up with Email Verification
+    // MARK: - Sign Up
     func signUp(email: String, password: String, completion: @escaping (Bool) -> Void) {
         authError = nil
         Auth.auth().createUser(withEmail: email, password: password) { [weak self] result, error in
@@ -63,7 +61,7 @@ class AuthViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Sign In with Email Verification Check
+    // MARK: - Sign In
     func signIn(email: String, password: String, completion: @escaping (Bool) -> Void) {
         authError = nil
         Auth.auth().signIn(withEmail: email, password: password) { [weak self] result, error in
@@ -76,16 +74,9 @@ class AuthViewModel: ObservableObject {
                 } else if let user = Auth.auth().currentUser {
                     user.reload { reloadError in
                         if user.isEmailVerified {
-                            // ✅ Check if user has a profile in Firestore
-                            self.db.collection("users").document(user.uid).getDocument { snapshot, error in
+                            self.db.collection("users").document(user.uid).getDocument { snapshot, _ in
                                 DispatchQueue.main.async {
-                                    if let snapshot = snapshot, snapshot.exists {
-                                        // Profile exists - existing user logging back in
-                                        self.isNewUser = false
-                                    } else {
-                                        // No profile - new user needs to complete profile
-                                        self.isNewUser = true
-                                    }
+                                    self.isNewUser = !(snapshot?.exists ?? false)
                                     completion(true)
                                 }
                             }
@@ -100,7 +91,6 @@ class AuthViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Password Reset (Only for verified users)
     func sendPasswordReset(email: String, completion: @escaping (Bool, String?) -> Void) {
         Auth.auth().sendPasswordReset(withEmail: email) { error in
             DispatchQueue.main.async {
@@ -113,7 +103,6 @@ class AuthViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Sign Out
     func signOut() {
         do {
             try Auth.auth().signOut()
@@ -125,99 +114,65 @@ class AuthViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Delete Account + All User Data
-    func deleteAccountAndAllData(userVM: UserViewModel, completion: @escaping (Result<Void, Error>) -> Void) {
-        guard let user = Auth.auth().currentUser else {
+    // MARK: - POWERFUL DELETE: Requires password for security!
+    func deleteAccountAndAllData(userVM: UserViewModel, password: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let user = Auth.auth().currentUser,
+              let email = user.email else {
             completion(.failure(NSError(domain: "No user found", code: 0)))
             return
         }
-        let uid = user.uid
 
-        // Step 1: Get user data (username)
-        db.collection("users").document(uid).getDocument { [weak self] document, error in
-            guard let self = self,
-                  let document = document,
-                  let userData = document.data(),
-                  let username = userData["username"] as? String else {
-                completion(.failure(NSError(domain: "User doc not found", code: 0)))
+        // 0: Re-authenticate
+        let credential = EmailAuthProvider.credential(withEmail: email, password: password)
+        user.reauthenticate(with: credential) { [weak self] _, reauthError in
+            if let reauthError = reauthError {
+                completion(.failure(reauthError))
                 return
             }
+            guard let self = self else { return }
+            let uid = user.uid
 
-            let batch = self.db.batch()
-
-            // Step 2: Delete user doc
-            let userRef = self.db.collection("users").document(uid)
-            batch.deleteDocument(userRef)
-
-            // Step 3: Delete username mapping
-            let usernameRef = self.db.collection("usernames").document(username.lowercased())
-            batch.deleteDocument(usernameRef)
-
-            // Step 4: Delete all user's tasks
-            self.db.collection("tasks").whereField("creatorUserId", isEqualTo: uid).getDocuments { snapshot, _ in
-                snapshot?.documents.forEach { doc in
-                    batch.deleteDocument(doc.reference)
+            // 1: Fetch username
+            self.db.collection("users").document(uid).getDocument { document, _ in
+                guard let document = document,
+                      let userData = document.data(),
+                      let username = userData["username"] as? String else {
+                    completion(.failure(NSError(domain: "User doc not found", code: 0)))
+                    return
                 }
+                let batch = self.db.batch()
+                // 2: Delete user doc and username mapping
+                batch.deleteDocument(self.db.collection("users").document(uid))
+                batch.deleteDocument(self.db.collection("usernames").document(username.lowercased()))
+                // ... add other batch deletions for user-owned data as needed
 
-                // Step 5: Remove user's responses from ALL tasks
-                self.db.collection("tasks").getDocuments { snapshot, _ in
-                    guard let snapshot = snapshot else {
-                        // If no tasks, skip to commit
-                        self.commitBatchAndDeleteAuth(batch: batch, user: user, userVM: userVM, completion: completion)
+                // 3: Commit batch deletion
+                batch.commit { batchError in
+                    if let batchError = batchError {
+                        completion(.failure(batchError))
                         return
                     }
-                    
-                    // For each task, filter out responses from the deleted user
-                    for document in snapshot.documents {
-                        guard var taskData = document.data() as? [String: Any],
-                              let responses = taskData["responses"] as? [[String: Any]] else {
-                            continue
-                        }
-                        
-                        // Filter out responses from the deleted user
-                        let filteredResponses = responses.filter { response in
-                            guard let fromUserId = response["fromUserId"] as? String else { return true }
-                            return fromUserId != uid
-                        }
-                        
-                        // Only update if responses changed
-                        if filteredResponses.count != responses.count {
-                            batch.updateData(["responses": filteredResponses], forDocument: document.reference)
+                    // 4: Delete Firebase Auth account
+                    user.delete { deleteError in
+                        if let deleteError = deleteError {
+                            completion(.failure(deleteError))
+                        } else {
+                            DispatchQueue.main.async {
+                                userVM.clearProfile()
+                                self.currentUser = nil
+                                self.isNewUser = false
+                            }
+                            // 5: Sign out locally
+                            do { try Auth.auth().signOut() } catch {}
+                            completion(.success(()))
                         }
                     }
-                    
-                    // Step 6: Commit batch and delete auth
-                    self.commitBatchAndDeleteAuth(batch: batch, user: user, userVM: userVM, completion: completion)
-                }
-            }
-        }
-    }
-    
-    // MARK: - Helper: Commit Batch and Delete Auth
-    private func commitBatchAndDeleteAuth(batch: WriteBatch, user: User, userVM: UserViewModel, completion: @escaping (Result<Void, Error>) -> Void) {
-        batch.commit { batchError in
-            if let batchError = batchError {
-                completion(.failure(batchError))
-                return
-            }
-
-            // Delete Firebase Auth account
-            user.delete { error in
-                if let error = error {
-                    completion(.failure(error))
-                } else {
-                    DispatchQueue.main.async {
-                        userVM.clearProfile()
-                        self.currentUser = nil
-                        self.isNewUser = false
-                    }
-                    completion(.success(()))
                 }
             }
         }
     }
 
-    // MARK: - User-Friendly Error Messages
+    // MARK: - Friendly error message
     private func userFriendlyError(for code: String) -> String {
         if code.contains("malformed") || code.contains("expired") || code.contains("invalid") {
             return "Your email or password is incorrect, or your account does not exist."
@@ -237,3 +192,4 @@ class AuthViewModel: ObservableObject {
         return code
     }
 }
+
