@@ -7,6 +7,7 @@
 
 
 import SwiftUI
+import FirebaseAuth
 
 struct ProfileSetupView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
@@ -27,7 +28,6 @@ struct ProfileSetupView: View {
     var body: some View {
         ZStack {
             Theme.background.ignoresSafeArea()
-            
             ScrollView {
                 VStack(spacing: 24) {
                     Text("Complete Your Profile")
@@ -94,7 +94,7 @@ struct ProfileSetupView: View {
                                 .cornerRadius(10)
                         }
                     }
-                   // .disabled(firstName.isEmpty || lastName.isEmpty || username.isEmpty || isLoading)
+                    // .disabled(firstName.isEmpty || lastName.isEmpty || username.isEmpty || isLoading)
                     .padding(.horizontal, 30)
                 }
             }
@@ -122,7 +122,7 @@ struct ProfileSetupView: View {
             switch result {
             case .success:
                 print("✅ SUCCESS - Profile created!")
-                // userVM.fetchUserProfile() // REMOVE THIS LINE
+                // userVM.fetchUserProfile()
                 authViewModel.isNewUser = false
             case .failure(let err):
                 print("❌ FAILURE - Error: \(err.localizedDescription)")

@@ -9,6 +9,7 @@ import Foundation
 import FirebaseFirestore
 import FirebaseAuth
 import FirebaseStorage
+import UIKit
 
 enum UserVMError: Error {
     case message(String)
@@ -54,17 +55,22 @@ class UserViewModel: ObservableObject {
                 return
             }
             if let document = document, document.exists,
-               let existingUID = document.data()?["uid"] as? String,
-               existingUID != userID {
+                let existingUID = document.data()?["uid"] as? String,
+                existingUID != userID {
                 completion(.failure(.message("That Username already exists. Please use another one.")))
                 return
             }
+            var bioValue = self.profile?.bio ?? ""
+            if let newBio = self.profile?.bio { bioValue = newBio }
+            
             let profile = UserProfile(
                 id: userID,
                 firstName: firstName,
                 lastName: lastName,
                 username: username,
-                dateOfBirth: dateOfBirth
+                dateOfBirth: dateOfBirth,
+                bio: bioValue, // If your UserProfile includes bio in its Codable
+                profileImageURL: self.profile?.profileImageURL // Keep avatar if editing
             )
             let batch = self.db.batch()
             let userRef = usersRef.document(userID)
@@ -89,6 +95,59 @@ class UserViewModel: ObservableObject {
                     completion(.success(()))
                 }
             }
+        }
+    }
+    
+    // MARK: - Edit Profile (for name, username, bio in-app editing)
+    func updateProfile(name: String, username: String, bio: String, completion: (() -> Void)? = nil) {
+        guard let profile = self.profile else { completion?(); return }
+        var firstName = ""
+        var lastName = ""
+        let parts = name.split(separator: " ")
+        if !parts.isEmpty {
+            firstName = String(parts[0])
+            if parts.count > 1 {
+                lastName = parts[1...].joined(separator: " ")
+            }
+        }
+        let dateOfBirth = profile.dateOfBirth
+        
+        // This will trigger your username collision logic
+        createOrUpdateProfile(
+            firstName: firstName,
+            lastName: lastName,
+            username: username,
+            dateOfBirth: dateOfBirth
+        ) { result in
+            // Always update the local bio value and Firestore, even if other data failed
+            DispatchQueue.main.async {
+                self.profile?.firstName = firstName
+                self.profile?.lastName = lastName
+                self.profile?.username = username
+                self.profile?.bio = bio
+            }
+            if let userId = profile.id {
+                self.db.collection("users").document(userId).updateData(["bio": bio]) { _ in
+                    completion?()
+                }
+            } else {
+                completion?()
+            }
+        }
+    }
+    
+    func updateBio(_ bio: String, completion: @escaping () -> Void) {
+        guard let userId = Auth.auth().currentUser?.uid else { return }
+        db.collection("users").document(userId).updateData([
+            "bio": bio
+        ]) { error in
+            if error == nil {
+                // Update local copy if needed
+                DispatchQueue.main.async {
+                    self.profile?.bio = bio
+                }
+            }
+            completion()
         }
     }
     
@@ -207,59 +266,56 @@ class UserViewModel: ObservableObject {
     
     // Upload profile image
     func uploadProfileImage(_ image: UIImage, completion: @escaping (Result<String, Error>) -> Void) {
-        guard let uid = auth.currentUser?.uid else {
-            completion(.failure(NSError(domain: "No UID", code: 0)))
+        guard let currentUser = Auth.auth().currentUser else {
+            completion(.failure(NSError(domain: "AuthError", code: 0, userInfo: [NSLocalizedDescriptionKey: "No authenticated user"])))
             return
         }
-
-        // Try JPEG, fallback to PNG
-        let imageData: Data?
-        if let jpeg = image.jpegData(compressionQuality: 0.5) {
-            imageData = jpeg
-        } else if let png = image.pngData() {
-            imageData = png
-        } else {
-            completion(.failure(NSError(domain: "Image format error", code: 0)))
+        
+        // Convert image to data
+        guard let imageData = image.jpegData(compressionQuality: 0.8) else {
+            completion(.failure(NSError(domain: "ImageError", code: 0, userInfo: [NSLocalizedDescriptionKey: "Could not convert image to data"])))
             return
         }
-
-        let ref = Storage.storage().reference().child("profileImages/\(uid).jpg")
-        ref.putData(imageData!, metadata: nil) { metadata, error in
+        
+        // Create storage reference
+        let storage = Storage.storage()
+        let storageRef = storage.reference()
+        let profileImageRef = storageRef.child("profileimages/\(currentUser.uid).jpg")
+        
+        // Upload the image
+        profileImageRef.putData(imageData, metadata: nil) { metadata, error in
             if let error = error {
                 completion(.failure(error))
                 return
             }
-            ref.downloadURL { url, error in
+            
+            // Get the download URL
+            profileImageRef.downloadURL { url, error in
                 if let error = error {
                     completion(.failure(error))
                     return
                 }
-                if let url = url {
-                    self.updateProfileImageURL(url: url.absoluteString)
-                    completion(.success(url.absoluteString))
-                } else {
-                    completion(.failure(NSError(domain: "Could not get download URL", code: 0)))
+                
+                guard let downloadURL = url else {
+                    completion(.failure(NSError(domain: "StorageError", code: 0, userInfo: [NSLocalizedDescriptionKey: "Failed to get download URL"])))
+                    return
                 }
-            }
-        }
-    }
-
-    func updateProfileImageURL(url: String) {
-        guard let uid = auth.currentUser?.uid else { return }
-        db.collection("users").document(uid).updateData(["profileImageURL": url]) { _ in
-            DispatchQueue.main.async {
-                self.profile?.profileImageURL = url
-            }
-        }
-    }
-
-    // MARK: - Update Bio (fixed)
-    func updateBio(_ bio: String, completion: (() -> Void)? = nil) {
-        guard let uid = auth.currentUser?.uid else { return }
-        db.collection("users").document(uid).updateData(["bio": bio]) { _ in
-            DispatchQueue.main.async {
-                self.profile?.bio = bio
-                completion?()
+                
+                // Update the user's profile in Firestore with the download URL
+                let db = Firestore.firestore()
+                db.collection("users").document(currentUser.uid).updateData([
+                    "profileImageURL": downloadURL.absoluteString
+                ]) { error in
+                    if let error = error {
+                        completion(.failure(error))
+                    } else {
+                        // Update local profile
+                        DispatchQueue.main.async {
+                            self.profile?.profileImageURL = downloadURL.absoluteString
+                        }
+                        completion(.success(downloadURL.absoluteString))
+                    }
+                }
             }
         }
     }

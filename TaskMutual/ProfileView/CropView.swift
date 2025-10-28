@@ -33,7 +33,7 @@ struct CropView: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> TOCropViewController {
         let cropVC = TOCropViewController(image: image)
         cropVC.delegate = context.coordinator
-        cropVC.aspectRatioPreset = CGSize(width: 1, height: 1) // Square ratio (needed for circle display)
+        cropVC.aspectRatioPreset = CGSize(width: 1, height: 1)
         cropVC.aspectRatioLockEnabled = true
         cropVC.resetButtonHidden = true
         cropVC.rotateButtonsHidden = true
@@ -42,4 +42,7 @@ struct CropView: UIViewControllerRepresentable {
 
     func updateUIViewController(_ uiViewController: TOCropViewController, context: Context) {}
 }
+
+
+
 
