@@ -121,6 +121,7 @@ struct EditProfileView: View {
                 }
 
                 // Bio field
+                // ...In your EditProfileView body
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Bio")
                         .font(.headline)
@@ -133,7 +134,6 @@ struct EditProfileView: View {
                         background: UIColor(white: 1, alpha: 0.07),
                         cornerRadius: 10
                     )
-                    .focused($bioIsFocused)
                     .frame(height: 90)
                     HStack {
                         Spacer()
@@ -143,7 +143,6 @@ struct EditProfileView: View {
                             .padding(.trailing, 8)
                     }
                 }
-
                 Spacer()
 
                 Button(action: {
