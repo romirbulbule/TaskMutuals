@@ -17,26 +17,36 @@ struct EditProfileView: View {
     @State private var bio: String = ""
     @State private var inputImage: UIImage?
     @State private var showImagePicker = false
+    @State private var showCropView = false
     let maxBioLength = 150
 
     var body: some View {
         ZStack {
             Theme.background.ignoresSafeArea()
-
             VStack(spacing: 26) {
-                // Profile picture
-                ZStack {
-                    if let urlString = userVM.profile?.profileImageURL, let url = URL(string: urlString) {
+
+                // --------- PROFILE IMAGE BLOCK ----------
+                VStack(spacing: 8) {
+                    if let pickedImage = inputImage {
+                        Image(uiImage: pickedImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 100, height: 100)
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(Color.accentColor, lineWidth: 2.5))
+                            .shadow(radius: 6)
+                    } else if let urlString = userVM.profile?.profileImageURL, let url = URL(string: urlString) {
                         AsyncImage(url: url) { phase in
                             switch phase {
                             case .empty:
                                 ProgressView()
                             case .success(let image):
-                                image
-                                    .resizable()
+                                image.resizable()
                                     .aspectRatio(contentMode: .fill)
                                     .frame(width: 100, height: 100)
                                     .clipShape(Circle())
+                                    .overlay(Circle().stroke(Color.accentColor, lineWidth: 2.5))
+                                    .shadow(radius: 6)
                             default:
                                 Image(systemName: "person.crop.circle.fill")
                                     .resizable()
@@ -51,44 +61,66 @@ struct EditProfileView: View {
                             .foregroundColor(.gray)
                     }
                 }
+                // ---------------------------------------
 
                 Button(action: { showImagePicker = true }) {
                     Text("Edit profile picture")
                         .foregroundColor(Color.accentColor)
                         .font(.system(size: 16, weight: .semibold))
                 }
-                .sheet(isPresented: $showImagePicker) {
+                .sheet(isPresented: $showImagePicker, onDismiss: {
+                    if inputImage != nil {
+                        showCropView = true
+                    }
+                }) {
                     ImagePicker(image: $inputImage)
                 }
+                .sheet(isPresented: $showCropView) {
+                    CropView(
+                        image: Binding(
+                            get: { inputImage },
+                            set: { inputImage = $0 }
+                        ),
+                        onSet: { cropped in
+                            inputImage = cropped
+                            showCropView = false
+                        },
+                        onChooseAnother: {
+                            inputImage = nil
+                            showCropView = false
+                            showImagePicker = true
+                        }
+                    )
+                }
 
-                // Name field
+                // Name field - grayed & uneditable
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Name")
                         .font(.headline)
                         .foregroundColor(.white)
                     TextField("Name", text: $name)
-                        .foregroundColor(.white)
+                        .disabled(true)
+                        .foregroundColor(Color.gray.opacity(0.8))
                         .padding(12)
-                        .background(Color.white.opacity(0.07))
+                        .background(Color.gray.opacity(0.15))
                         .cornerRadius(10)
-                        .accentColor(.accentColor)
                 }
 
-                // Username field
+                // Username field - grayed & uneditable
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Username")
                         .font(.headline)
                         .foregroundColor(.white)
                     TextField("Username", text: $username)
-                        .foregroundColor(.white)
+                        .disabled(true)
+                        .foregroundColor(Color.gray.opacity(0.8))
                         .padding(12)
-                        .background(Color.white.opacity(0.07))
+                        .background(Color.gray.opacity(0.15))
                         .cornerRadius(10)
-                        .accentColor(.accentColor)
                 }
 
                 // Bio field
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text("Bio")
                         .font(.headline)
                         .foregroundColor(.white)
@@ -105,15 +137,14 @@ struct EditProfileView: View {
                         Spacer()
                         Text("\(bio.count)/\(maxBioLength)")
                             .font(.caption2)
-                            .foregroundColor(bio.count < maxBioLength ? .secondary : .red)
+                            .foregroundColor(bio.count < maxBioLength ? .white : .red)
                             .padding(.trailing, 8)
-                            .padding(.top, -6)
                     }
                 }
 
                 Spacer()
 
-                Button("Save") {
+                Button(action: {
                     userVM.updateProfile(name: name, username: username, bio: bio) {
                         if let image = inputImage {
                             userVM.uploadProfileImage(image) { _ in
@@ -123,14 +154,17 @@ struct EditProfileView: View {
                             self.presentationMode.wrappedValue.dismiss()
                         }
                     }
+                }) {
+                    Text("Save")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity, minHeight: 24)
+                        .padding(.vertical, 16)
+                        .background(Color.accentColor)
+                        .cornerRadius(16)
                 }
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(Color.accentColor)
-                .cornerRadius(16)
                 .padding(.bottom, 12)
+                .buttonStyle(PlainButtonStyle())
             }
             .padding(.horizontal, 22)
         }

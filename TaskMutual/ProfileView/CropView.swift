@@ -7,42 +7,95 @@
 
 
 import SwiftUI
-import TOCropViewController
 
-struct CropView: UIViewControllerRepresentable {
-    let image: UIImage
-    var didCrop: (UIImage) -> Void
+struct CropView: View {
+    @Binding var image: UIImage?
+    @State private var showCropper = false
+    @Environment(\.presentationMode) var presentationMode
 
-    class Coordinator: NSObject, TOCropViewControllerDelegate {
-        let parent: CropView
+    var onSet: (UIImage) -> Void
+    var onChooseAnother: () -> Void
 
-        init(_ parent: CropView) { self.parent = parent }
+    var body: some View {
+        ZStack {
+            Theme.background.ignoresSafeArea()
+            VStack(spacing: 34) {
+                Spacer(minLength: 40)
+                if let uiImage = image {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 180, height: 180)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(Color.accentColor, lineWidth: 3))
+                        .shadow(radius: 8)
+                } else {
+                    ZStack {
+                        Circle()
+                            .fill(Color.gray.opacity(0.12))
+                            .frame(width: 180, height: 180)
+                        Image(systemName: "person.crop.circle.fill")
+                            .resizable()
+                            .frame(width: 100, height: 100)
+                            .foregroundColor(.gray)
+                    }
+                }
+                Spacer()
+                VStack(spacing: 16) {
+                    // CROp button styled to match Set Profile Picture
+                    Button(action: { showCropper = true }) {
+                        Text("Crop")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(Color.accentColor)
+                            .cornerRadius(16)
+                            .shadow(color: Color.accentColor.opacity(0.23), radius: 6, y: 2)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .disabled(image == nil)
+                    .sheet(isPresented: $showCropper) {
+                        CropperSheet(image: $image)
+                    }
 
-        func cropViewController(_ cropViewController: TOCropViewController, didFinishCancelled cancelled: Bool) {
-            cropViewController.dismiss(animated: true)
+                    Button(action: {
+                        onSet(image!)
+                        presentationMode.wrappedValue.dismiss()
+                    }) {
+                        Text("Set Profile Picture")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(Color.accentColor)
+                            .cornerRadius(16)
+                            .shadow(color: Color.accentColor.opacity(0.23), radius: 6, y: 2)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .disabled(image == nil)
+
+                    Button(action: {
+                        onChooseAnother()
+                        presentationMode.wrappedValue.dismiss()
+                    }) {
+                        Text("Choose Another")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.accentColor)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(Color.white.opacity(0.07))
+                            .cornerRadius(16)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+                .padding(.horizontal, 32)
+                Spacer(minLength: 40)
+            }
         }
-
-        func cropViewController(_ cropViewController: TOCropViewController, didCropToImage image: UIImage, rect cropRect: CGRect, angle: Int) {
-            parent.didCrop(image)
-            cropViewController.dismiss(animated: true)
-        }
+        .navigationBarTitleDisplayMode(.inline)
     }
-
-    func makeCoordinator() -> Coordinator { Coordinator(self) }
-
-    func makeUIViewController(context: Context) -> TOCropViewController {
-        let cropVC = TOCropViewController(image: image)
-        cropVC.delegate = context.coordinator
-        cropVC.aspectRatioPreset = CGSize(width: 1, height: 1)
-        cropVC.aspectRatioLockEnabled = true
-        cropVC.resetButtonHidden = true
-        cropVC.rotateButtonsHidden = true
-        return cropVC
-    }
-
-    func updateUIViewController(_ uiViewController: TOCropViewController, context: Context) {}
 }
-
 
 
 
