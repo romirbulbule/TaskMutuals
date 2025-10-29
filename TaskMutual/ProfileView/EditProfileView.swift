@@ -18,10 +18,11 @@ struct EditProfileView: View {
     @State private var inputImage: UIImage?
     @State private var showImagePicker = false
     @State private var showCropView = false
+    @FocusState private var bioIsFocused: Bool
     let maxBioLength = 150
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .bottom) {
             Theme.background.ignoresSafeArea()
             VStack(spacing: 26) {
 
@@ -132,6 +133,7 @@ struct EditProfileView: View {
                         background: UIColor(white: 1, alpha: 0.07),
                         cornerRadius: 10
                     )
+                    .focused($bioIsFocused)
                     .frame(height: 90)
                     HStack {
                         Spacer()
@@ -167,6 +169,26 @@ struct EditProfileView: View {
                 .buttonStyle(PlainButtonStyle())
             }
             .padding(.horizontal, 22)
+
+            // -------- Floating "Done" button over keyboard when bio is focused --------
+            if bioIsFocused {
+                Button(action: {
+                    bioIsFocused = false
+                }) {
+                    Text("Done")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color.accentColor)
+                        .cornerRadius(16)
+                        .shadow(color: Color.accentColor.opacity(0.23), radius: 6, y: 2)
+                        .padding([.horizontal, .bottom], 18)
+                }
+                .transition(.move(edge: .bottom))
+                .animation(.default, value: bioIsFocused)
+            }
+            // -------------------------------------------------------------------------
         }
         .onAppear {
             if let profile = userVM.profile {
