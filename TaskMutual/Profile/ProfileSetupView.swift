@@ -122,7 +122,8 @@ struct ProfileSetupView: View {
             switch result {
             case .success:
                 print("✅ SUCCESS - Profile created!")
-                // userVM.fetchUserProfile()
+                // Reset fetch state so profile can be loaded
+                userVM.resetFetchState()
                 authViewModel.isNewUser = false
             case .failure(let err):
                 print("❌ FAILURE - Error: \(err.localizedDescription)")

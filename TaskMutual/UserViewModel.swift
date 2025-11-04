@@ -24,11 +24,14 @@ extension UserVMError: LocalizedError {
 class UserViewModel: ObservableObject {
     @Published var profile: UserProfile?
     @Published var isLoadingProfile: Bool = false
-    
+
     // For chat user search:
     @Published var searchText: String = ""
     @Published var allUsers: [UserProfile] = []
-    
+
+    // Track if profile fetch has been attempted to prevent infinite loops
+    private var hasAttemptedFetch: Bool = false
+
     private let db = Firestore.firestore()
     private let auth = Auth.auth()
     
@@ -150,19 +153,50 @@ class UserViewModel: ObservableObject {
             completion()
         }
     }
+
+    // MARK: - Update User Type
+    func updateUserType(_ userType: UserType, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            completion(.failure(NSError(domain: "Not logged in", code: 0)))
+            return
+        }
+
+        db.collection("users").document(userId).updateData([
+            "userType": userType.rawValue
+        ]) { error in
+            if let error = error {
+                completion(.failure(error))
+            } else {
+                // Update local copy
+                DispatchQueue.main.async {
+                    self.profile?.userType = userType
+                }
+                completion(.success(()))
+            }
+        }
+    }
     
     // MARK: - Fetch User Profile (with debug logs/timing)
     func fetchUserProfile() {
         print("DEBUG: currentUser: \(String(describing: auth.currentUser)), uid: \(String(describing: auth.currentUser?.uid))")
+
+        // Prevent repeated fetches when no profile exists
+        if hasAttemptedFetch && profile == nil && !isLoadingProfile {
+            print("⚠️ Skipping repeated profile fetch - profile doesn't exist")
+            return
+        }
+
         guard let userId = auth.currentUser?.uid else {
             DispatchQueue.main.async {
                 self.profile = nil
                 self.isLoadingProfile = false
+                self.hasAttemptedFetch = true
             }
             return
         }
-        
+
         self.isLoadingProfile = true
+        self.hasAttemptedFetch = true
         let start = Date()
         db.collection("users").document(userId).getDocument { [weak self] snapshot, error in
             let elapsed = Date().timeIntervalSince(start)
@@ -177,7 +211,7 @@ class UserViewModel: ObservableObject {
                 return
             }
             guard let snapshot = snapshot, snapshot.exists else {
-                print("No profile found for user \(userId)")
+                print("No profile found for user \(userId) - user needs to complete profile setup")
                 DispatchQueue.main.async {
                     self.profile = nil
                 }
@@ -197,64 +231,212 @@ class UserViewModel: ObservableObject {
             }
         }
     }
+
+    // Reset fetch state when needed (e.g., after profile creation or logout)
+    func resetFetchState() {
+        hasAttemptedFetch = false
+    }
     
     func clearProfile() {
         self.profile = nil
         self.isLoadingProfile = false
+        self.hasAttemptedFetch = false
     }
     
     // MARK: - Delete Account
-    func deleteAccountAndProfile(completion: @escaping (Result<Void, Error>) -> Void) {
-        guard let uid = Auth.auth().currentUser?.uid else {
+    // MARK: - Delete Account & All User Data (Profile + Tasks + Chats + Storage)
+    func deleteAccountAndAllData(password: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let user = Auth.auth().currentUser else {
             completion(.failure(NSError(domain: "No user", code: 0)))
             return
         }
-        db.collection("users").document(uid).getDocument { document, error in
-            guard let document = document,
-                  let userData = document.data(),
-                  let username = userData["username"] as? String else {
-                completion(.failure(NSError(domain: "Username not found", code: 0)))
-                return
-            }
-            let batch = self.db.batch()
-            let userRef = self.db.collection("users").document(uid)
-            let usernameRef = self.db.collection("usernames").document(username.lowercased())
-            batch.deleteDocument(userRef)
-            batch.deleteDocument(usernameRef)
-            batch.commit { batchError in
-                if let batchError = batchError {
-                    completion(.failure(batchError))
+        let uid = user.uid
+        let db = Firestore.firestore()
+        let storage = Storage.storage()
+
+        print("🗑️ Starting complete account deletion for user: \(uid)")
+
+        // Step 1: Fetch user profile to get username
+        let userRef = db.collection("users").document(uid)
+        userRef.getDocument { docSnap, _ in
+            let username = (docSnap?.data()?["username"] as? String) ?? ""
+
+            // Step 2: Delete all tasks created by user
+            db.collection("tasks").whereField("creatorUserId", isEqualTo: uid).getDocuments { (tasksSnapshot, error) in
+                if let error = error {
+                    completion(.failure(error))
                     return
                 }
-                Auth.auth().currentUser?.delete { error in
+
+                print("🗑️ Found \(tasksSnapshot?.documents.count ?? 0) tasks to delete")
+
+                // Step 3: Delete all responses by user in OTHER users' tasks
+                db.collection("tasks").getDocuments { (allTasksSnapshot, error) in
                     if let error = error {
                         completion(.failure(error))
-                    } else {
-                        DispatchQueue.main.async {
-                            self.profile = nil
+                        return
+                    }
+
+                    var tasksWithUserResponses: [(DocumentReference, Task)] = []
+
+                    // Find all tasks where user has responded
+                    for doc in allTasksSnapshot?.documents ?? [] {
+                        if var task = try? doc.data(as: Task.self),
+                           task.responses.contains(where: { $0.fromUserId == uid }) {
+                            // Remove this user's responses
+                            task.responses.removeAll { $0.fromUserId == uid }
+                            tasksWithUserResponses.append((doc.reference, task))
                         }
-                        completion(.success(()))
+                    }
+
+                    print("🗑️ Found \(tasksWithUserResponses.count) tasks with user responses to clean")
+
+                    // Step 4: Delete all chats where user is participant
+                    db.collection("chats").whereField("participants", arrayContains: uid).getDocuments { (chatsSnapshot, error) in
+                        if let error = error {
+                            completion(.failure(error))
+                            return
+                        }
+
+                        print("🗑️ Found \(chatsSnapshot?.documents.count ?? 0) chats to delete")
+
+                        let chatDocs = chatsSnapshot?.documents ?? []
+                        let dispatchGroup = DispatchGroup()
+
+                        // Delete all messages in each chat (subcollections)
+                        for chatDoc in chatDocs {
+                            dispatchGroup.enter()
+                            chatDoc.reference.collection("messages").getDocuments { (messagesSnapshot, _) in
+                                let messageBatch = db.batch()
+                                messagesSnapshot?.documents.forEach { messageDoc in
+                                    messageBatch.deleteDocument(messageDoc.reference)
+                                }
+                                messageBatch.commit { _ in
+                                    dispatchGroup.leave()
+                                }
+                            }
+                        }
+
+                        dispatchGroup.notify(queue: .main) {
+                            // Step 5: Create batch for all Firestore deletions
+                            let batch = db.batch()
+
+                            // Delete user's tasks
+                            tasksSnapshot?.documents.forEach { doc in
+                                batch.deleteDocument(doc.reference)
+                            }
+
+                            // Update tasks where user had responses (remove their responses)
+                            for (docRef, updatedTask) in tasksWithUserResponses {
+                                if let taskData = try? Firestore.Encoder().encode(updatedTask) {
+                                    batch.setData(taskData, forDocument: docRef)
+                                }
+                            }
+
+                            // Delete chat documents
+                            chatDocs.forEach { chatDoc in
+                                batch.deleteDocument(chatDoc.reference)
+                            }
+
+                            // Delete user profile
+                            batch.deleteDocument(userRef)
+
+                            // Delete username mapping
+                            let usernameRef = db.collection("usernames").document(username.lowercased())
+                            batch.deleteDocument(usernameRef)
+
+                            // Step 6: Commit all Firestore deletions
+                            batch.commit { batchError in
+                                if let batchError = batchError {
+                                    print("❌ Batch commit error: \(batchError)")
+                                    completion(.failure(batchError))
+                                    return
+                                }
+
+                                print("✅ Firestore data deleted")
+
+                                // Step 7: Delete profile image from Storage
+                                let profileImageRef = storage.reference().child("profileimages/\(uid).jpg")
+                                profileImageRef.delete { storageError in
+                                    // Continue even if image doesn't exist
+                                    if let storageError = storageError {
+                                        print("⚠️ Profile image deletion: \(storageError.localizedDescription)")
+                                    } else {
+                                        print("✅ Profile image deleted")
+                                    }
+
+                                    // Step 8: Re-authenticate and delete Firebase Auth account
+                                    let email = user.email ?? ""
+                                    let credential = EmailAuthProvider.credential(withEmail: email, password: password)
+                                    user.reauthenticate(with: credential) { _, authError in
+                                        if let authError = authError {
+                                            print("❌ Re-auth error: \(authError)")
+                                            completion(.failure(authError))
+                                            return
+                                        }
+
+                                        // Final step: Delete Auth account
+                                        user.delete { deleteError in
+                                            if let deleteError = deleteError {
+                                                print("❌ Auth deletion error: \(deleteError)")
+                                                completion(.failure(deleteError))
+                                            } else {
+                                                print("✅ Account completely deleted")
+                                                DispatchQueue.main.async {
+                                                    self.profile = nil
+                                                    UserDefaults.standard.removeObject(forKey: "username")
+                                                }
+                                                completion(.success(()))
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
     }
+
     
     // ==== ADDED FOR CHAT SEARCH ===========
     /// Fetch all users except the logged-in user, for chat/search
+    /// Filters by opposite user type (service seekers see providers and vice versa)
     func fetchAllUsers() {
         guard let currentUserID = auth.currentUser?.uid else { return }
-        db.collection("users").getDocuments { [weak self] snapshot, error in
-            guard let documents = snapshot?.documents else { return }
-            DispatchQueue.main.async {
-                self?.allUsers = documents.compactMap { doc in
-                    let user = try? doc.data(as: UserProfile.self)
-                    return (user?.id == currentUserID) ? nil : user
+        guard let currentUserType = self.profile?.userType else {
+            // If current user hasn't set their type yet, show all users
+            db.collection("users").getDocuments { [weak self] snapshot, error in
+                guard let documents = snapshot?.documents else { return }
+                DispatchQueue.main.async {
+                    self?.allUsers = documents.compactMap { doc in
+                        let user = try? doc.data(as: UserProfile.self)
+                        return (user?.id == currentUserID) ? nil : user
+                    }
                 }
             }
+            return
         }
+
+        // Determine which user type to fetch (opposite of current user)
+        let targetUserType: UserType = (currentUserType == .lookingForServices) ? .providingServices : .lookingForServices
+
+        // Fetch users with opposite user type
+        db.collection("users")
+            .whereField("userType", isEqualTo: targetUserType.rawValue)
+            .getDocuments { [weak self] snapshot, error in
+                guard let documents = snapshot?.documents else { return }
+                DispatchQueue.main.async {
+                    self?.allUsers = documents.compactMap { doc in
+                        let user = try? doc.data(as: UserProfile.self)
+                        // Exclude current user
+                        return (user?.id == currentUserID) ? nil : user
+                    }
+                }
+            }
     }
-    
+
     /// Returns filtered user list for search UI
     var filteredUsers: [UserProfile] {
         if searchText.isEmpty {

@@ -14,6 +14,9 @@ class TasksViewModel: ObservableObject {
     private var db = Firestore.firestore()
     private var listener: ListenerRegistration?
 
+    // Current user's profile (set by app after login)
+    var currentUserProfile: UserProfile?
+
     // Uses cached username set by UserService after login
     var currentUserId: String {
         Auth.auth().currentUser?.uid ?? ""
@@ -21,13 +24,41 @@ class TasksViewModel: ObservableObject {
     var currentUsername: String {
         UserDefaults.standard.string(forKey: "username") ?? "Unknown"
     }
+    var currentUserType: UserType? {
+        currentUserProfile?.userType
+    }
 
     init() {
         fetchTasks()
     }
 
+    func setUserProfile(_ profile: UserProfile?) {
+        self.currentUserProfile = profile
+        // Re-fetch tasks with proper filtering when profile is set
+        fetchTasks()
+    }
+
     func fetchTasks() {
+        // Remove old listener
+        listener?.remove()
+
+        guard let userType = currentUserType else {
+            // If user hasn't set their type yet, show all tasks
+            listener = db.collection("tasks")
+                .order(by: "timestamp", descending: true)
+                .addSnapshotListener { snapshot, error in
+                    guard let docs = snapshot?.documents else { return }
+                    self.tasks = docs.compactMap { try? $0.data(as: Task.self) }
+                }
+            return
+        }
+
+        // Determine which user type to show tasks from (opposite of current user)
+        let targetUserType: UserType = (userType == .lookingForServices) ? .providingServices : .lookingForServices
+
+        // Fetch tasks from users with opposite user type
         listener = db.collection("tasks")
+            .whereField("creatorUserType", isEqualTo: targetUserType.rawValue)
             .order(by: "timestamp", descending: true)
             .addSnapshotListener { snapshot, error in
                 guard let docs = snapshot?.documents else { return }
@@ -41,6 +72,7 @@ class TasksViewModel: ObservableObject {
             description: description,
             creatorUserId: currentUserId,
             creatorUsername: currentUsername,
+            creatorUserType: currentUserType?.rawValue,
             timestamp: Date(),
             responses: []
         )

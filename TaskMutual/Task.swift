@@ -15,6 +15,7 @@ struct Task: Identifiable, Codable, Equatable {
     var description: String
     var creatorUserId: String
     var creatorUsername: String
+    var creatorUserType: String? // "looking_for_services" or "providing_services"
     var timestamp: Date = Date()
     var responses: [Response] = []
     var isArchived: Bool = false

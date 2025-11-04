@@ -42,6 +42,10 @@ struct TaskMutualApp: App {
                     .environmentObject(authViewModel)
                     .environmentObject(userVM)
                     .environmentObject(tasksVM)
+                    .onChange(of: userVM.profile) { profile in
+                        // Update TasksViewModel with user profile for filtering
+                        tasksVM.setUserProfile(profile)
+                    }
             }
         }
     }

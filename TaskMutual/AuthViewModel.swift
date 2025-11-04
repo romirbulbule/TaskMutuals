@@ -52,7 +52,16 @@ class AuthViewModel: ObservableObject {
     }
 
     func sendVerificationEmail() {
-        Auth.auth().currentUser?.sendEmailVerification { [weak self] error in
+        // Configure action code settings for better email links
+        let actionCodeSettings = ActionCodeSettings()
+        actionCodeSettings.handleCodeInApp = false // Open in browser, not app
+
+        // This makes the link more iOS-friendly and clickable
+        // You can customize this URL to your own domain if you have one
+        // For now, Firebase will use the default but with better formatting
+        actionCodeSettings.setIOSBundleID(Bundle.main.bundleIdentifier ?? "com.taskmutual.app")
+
+        Auth.auth().currentUser?.sendEmailVerification(with: actionCodeSettings) { [weak self] error in
             DispatchQueue.main.async {
                 if let error = error {
                     self?.authError = self?.userFriendlyError(for: error.localizedDescription)
@@ -92,7 +101,12 @@ class AuthViewModel: ObservableObject {
     }
 
     func sendPasswordReset(email: String, completion: @escaping (Bool, String?) -> Void) {
-        Auth.auth().sendPasswordReset(withEmail: email) { error in
+        // Configure action code settings for better email links
+        let actionCodeSettings = ActionCodeSettings()
+        actionCodeSettings.handleCodeInApp = false // Open in browser, not app
+        actionCodeSettings.setIOSBundleID(Bundle.main.bundleIdentifier ?? "com.taskmutual.app")
+
+        Auth.auth().sendPasswordReset(withEmail: email, actionCodeSettings: actionCodeSettings) { error in
             DispatchQueue.main.async {
                 if let error = error {
                     completion(false, self.userFriendlyError(for: error.localizedDescription))
@@ -115,59 +129,21 @@ class AuthViewModel: ObservableObject {
     }
 
     // MARK: - POWERFUL DELETE: Requires password for security!
+    // Deletes ALL user data: profile, tasks, chats, messages, responses, storage, and auth account
     func deleteAccountAndAllData(userVM: UserViewModel, password: String, completion: @escaping (Result<Void, Error>) -> Void) {
-        guard let user = Auth.auth().currentUser,
-              let email = user.email else {
-            completion(.failure(NSError(domain: "No user found", code: 0)))
-            return
-        }
-
-        // 0: Re-authenticate
-        let credential = EmailAuthProvider.credential(withEmail: email, password: password)
-        user.reauthenticate(with: credential) { [weak self] _, reauthError in
-            if let reauthError = reauthError {
-                completion(.failure(reauthError))
-                return
-            }
-            guard let self = self else { return }
-            let uid = user.uid
-
-            // 1: Fetch username
-            self.db.collection("users").document(uid).getDocument { document, _ in
-                guard let document = document,
-                      let userData = document.data(),
-                      let username = userData["username"] as? String else {
-                    completion(.failure(NSError(domain: "User doc not found", code: 0)))
-                    return
+        // Use the comprehensive deletion from UserViewModel
+        userVM.deleteAccountAndAllData(password: password) { [weak self] result in
+            switch result {
+            case .success:
+                DispatchQueue.main.async {
+                    self?.currentUser = nil
+                    self?.isNewUser = false
                 }
-                let batch = self.db.batch()
-                // 2: Delete user doc and username mapping
-                batch.deleteDocument(self.db.collection("users").document(uid))
-                batch.deleteDocument(self.db.collection("usernames").document(username.lowercased()))
-                // ... add other batch deletions for user-owned data as needed
-
-                // 3: Commit batch deletion
-                batch.commit { batchError in
-                    if let batchError = batchError {
-                        completion(.failure(batchError))
-                        return
-                    }
-                    // 4: Delete Firebase Auth account
-                    user.delete { deleteError in
-                        if let deleteError = deleteError {
-                            completion(.failure(deleteError))
-                        } else {
-                            DispatchQueue.main.async {
-                                userVM.clearProfile()
-                                self.currentUser = nil
-                                self.isNewUser = false
-                            }
-                            // 5: Sign out locally
-                            do { try Auth.auth().signOut() } catch {}
-                            completion(.success(()))
-                        }
-                    }
-                }
+                // Sign out locally
+                do { try Auth.auth().signOut() } catch {}
+                completion(.success(()))
+            case .failure(let error):
+                completion(.failure(error))
             }
         }
     }
