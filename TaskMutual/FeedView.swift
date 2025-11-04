@@ -9,39 +9,68 @@ import SwiftUI
 import FirebaseFirestore
 
 struct FeedView: View {
-    @StateObject private var tasksVM = TasksViewModel()
+    @EnvironmentObject var userVM: UserViewModel
+    @EnvironmentObject var tasksVM: TasksViewModel
     @StateObject private var modalManager = ModalManager()
     @State private var showPostTaskSheet = false
+
+    // Determine if user can post tasks (only service seekers can post)
+    var canPostTasks: Bool {
+        userVM.profile?.userType == .lookingForServices
+    }
 
     var body: some View {
         NavigationView {
             ZStack {
                 Theme.background.ignoresSafeArea()
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(tasksVM.tasks) { task in
-                            NavigationLink(destination: TaskDetailView(task: task)) {
-                                TaskCardView(
-                                    task: task,
-                                    currentUserId: tasksVM.currentUserId, // << key line!
-                                    onEdit: { modalManager.showEdit(for: task) },
-                                    onDelete: { tasksVM.removeTask(task) },
-                                    onReport: { /* implement report logic here */ },
-                                    onRespond: { modalManager.showResponse(for: task) }
-                                )
-                                .padding(.top, 8)
-                                .padding(.horizontal)
+
+                if tasksVM.tasks.isEmpty {
+                    // Empty state
+                    VStack(spacing: 16) {
+                        Image(systemName: canPostTasks ? "plus.circle" : "tray")
+                            .font(.system(size: 60))
+                            .foregroundColor(.gray)
+
+                        Text(canPostTasks ? "No tasks yet" : "No tasks available")
+                            .font(.title2)
+                            .foregroundColor(.gray)
+
+                        Text(canPostTasks ? "Post your first task!" : "Check back later for tasks to complete")
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                            .multilineTextAlignment(.center)
+                    }
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            ForEach(tasksVM.tasks) { task in
+                                NavigationLink(destination: TaskDetailView(task: task)) {
+                                    TaskCardView(
+                                        task: task,
+                                        currentUserId: tasksVM.currentUserId,
+                                        onEdit: { modalManager.showEdit(for: task) },
+                                        onDelete: { tasksVM.removeTask(task) },
+                                        onReport: { /* implement report logic here */ },
+                                        onRespond: { modalManager.showResponse(for: task) }
+                                    )
+                                    .padding(.top, 8)
+                                    .padding(.horizontal)
+                                }
                             }
                         }
                     }
                 }
             }
-            .navigationTitle("Tasks")
+            .navigationTitle(canPostTasks ? "Your Tasks" : "Available Tasks")
             .navigationBarItems(leading:
-                Button(action: { showPostTaskSheet = true }) {
-                    Image(systemName: "plus")
-                        .font(.title2)
-                        .foregroundColor(Theme.accent)
+                Group {
+                    if canPostTasks {
+                        Button(action: { showPostTaskSheet = true }) {
+                            Image(systemName: "plus")
+                                .font(.title2)
+                                .foregroundColor(Theme.accent)
+                        }
+                    }
                 }
             )
             .sheet(isPresented: $showPostTaskSheet) {

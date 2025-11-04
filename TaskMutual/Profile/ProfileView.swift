@@ -21,6 +21,29 @@ struct ProfileView: View {
     @State private var deleteErrorMessage = ""
     @State private var showDeleteSuccess = false
     @State private var isDeletingAccount = false
+    @State private var showUserTypeSwitcher = false
+
+    var userTypeDisplay: String {
+        switch userVM.profile?.userType {
+        case .lookingForServices:
+            return "Looking for Services"
+        case .providingServices:
+            return "Providing Services"
+        case .none:
+            return "Not Set"
+        }
+    }
+
+    var userTypeIcon: String {
+        switch userVM.profile?.userType {
+        case .lookingForServices:
+            return "magnifyingglass.circle.fill"
+        case .providingServices:
+            return "briefcase.fill"
+        case .none:
+            return "questionmark.circle"
+        }
+    }
 
     var body: some View {
         NavigationView {
@@ -31,12 +54,27 @@ struct ProfileView: View {
                     // Name/Header/Hamburger Bar
                     HStack(alignment: .center) {
                         Spacer(minLength: 55)
-                        Text("\(userVM.profile?.firstName ?? "") \(userVM.profile?.lastName ?? "")")
-                            .font(.system(size: 22, weight: .heavy))
-                            .foregroundColor(.white)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.6)
-                            .padding(.leading, 22)
+                        VStack(spacing: 4) {
+                            Text("\(userVM.profile?.firstName ?? "") \(userVM.profile?.lastName ?? "")")
+                                .font(.system(size: 22, weight: .heavy))
+                                .foregroundColor(.white)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.6)
+
+                            // User Type Badge
+                            HStack(spacing: 6) {
+                                Image(systemName: userTypeIcon)
+                                    .font(.system(size: 12))
+                                Text(userTypeDisplay)
+                                    .font(.system(size: 13, weight: .medium))
+                            }
+                            .foregroundColor(.white.opacity(0.85))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 4)
+                            .background(Theme.accent.opacity(0.6))
+                            .cornerRadius(12)
+                        }
+                        .padding(.leading, 22)
                         Spacer()
                         Button(action: { showMenu.toggle() }) {
                             Image(systemName: "line.3.horizontal")
@@ -184,6 +222,17 @@ struct ProfileView: View {
             } message: {
                 Text("Your account was deleted successfully. You have been signed out.")
             }
+            .alert("Switch User Type", isPresented: $showUserTypeSwitcher) {
+                Button("Cancel", role: .cancel) {}
+                Button("Looking for Services") {
+                    switchUserType(to: .lookingForServices)
+                }
+                Button("Providing Services") {
+                    switchUserType(to: .providingServices)
+                }
+            } message: {
+                Text("Choose your new user type. This will change what tasks and users you see.")
+            }
         }
         .navigationViewStyle(StackNavigationViewStyle())
     }
@@ -197,6 +246,7 @@ struct ProfileView: View {
                 Text("Account Settings")
                     .font(.headline)
                     .foregroundColor(.white)
+
                 NavigationLink(destination: EditProfileView().environmentObject(userVM)) {
                     HStack {
                         Image(systemName: "person.crop.circle.badge.checkmark")
@@ -205,6 +255,20 @@ struct ProfileView: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                 }
+
+                // Switch User Type Button
+                Button(action: {
+                    showMenu = false
+                    showUserTypeSwitcher = true
+                }) {
+                    HStack {
+                        Image(systemName: "arrow.left.arrow.right.circle")
+                        Text("Switch User Type")
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                }
+
                 Button(action: { showLogoutConfirmation = true }) {
                     HStack {
                         Image(systemName: "arrow.right.square")
@@ -213,6 +277,7 @@ struct ProfileView: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                 }
+
                 Button(action: { showDeleteConfirmation = true }) {
                     HStack {
                         Image(systemName: "trash")
@@ -242,6 +307,21 @@ struct ProfileView: View {
             .padding(32)
             .background(Color.black.opacity(0.8))
             .cornerRadius(16)
+        }
+    }
+
+    private func switchUserType(to newType: UserType) {
+        userVM.updateUserType(newType) { result in
+            switch result {
+            case .success:
+                print("✅ User type switched to: \(newType.rawValue)")
+                // Refresh the feed with new user type
+                tasksVM.fetchTasks()
+                // Refresh user search
+                userVM.fetchAllUsers()
+            case .failure(let error):
+                print("❌ Failed to switch user type: \(error.localizedDescription)")
+            }
         }
     }
 

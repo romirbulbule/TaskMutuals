@@ -9,10 +9,13 @@ import SwiftUI
 
 struct MainTabView: View {
     @EnvironmentObject var userVM: UserViewModel
+    @EnvironmentObject var tasksVM: TasksViewModel
 
     var body: some View {
         TabView {
             FeedView()
+                .environmentObject(userVM)
+                .environmentObject(tasksVM)
                 .tabItem {
                     Image(systemName: "house.fill")
                     Text("Feed")
@@ -22,13 +25,13 @@ struct MainTabView: View {
                     Image(systemName: "magnifyingglass")
                     Text("Search")
                 }
-            // Pass userVM from the shared environment.
             ChatView()
                 .environmentObject(userVM)
                 .tabItem {
                     Label("Chat", systemImage: "message")
                 }
             ProfileView()
+                .environmentObject(userVM)
                 .tabItem {
                     Image(systemName: "person.crop.circle")
                     Text("Profile")
