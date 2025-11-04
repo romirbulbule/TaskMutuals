@@ -33,6 +33,7 @@ class TasksViewModel: ObservableObject {
     }
 
     func setUserProfile(_ profile: UserProfile?) {
+        print("📋 TasksViewModel: setUserProfile called with userType: \(profile?.userType?.rawValue ?? "nil")")
         self.currentUserProfile = profile
         // Re-fetch tasks with proper filtering when profile is set
         fetchTasks()
@@ -42,44 +43,104 @@ class TasksViewModel: ObservableObject {
         // Remove old listener
         listener?.remove()
 
-        guard let userType = currentUserType else {
-            // If user hasn't set their type yet, show all tasks
-            listener = db.collection("tasks")
-                .order(by: "timestamp", descending: true)
-                .addSnapshotListener { snapshot, error in
-                    guard let docs = snapshot?.documents else { return }
-                    self.tasks = docs.compactMap { try? $0.data(as: Task.self) }
-                }
-            return
-        }
+        print("📋 TasksViewModel: fetchTasks called, currentUserType: \(currentUserType?.rawValue ?? "nil")")
 
-        // Determine which user type to show tasks from (opposite of current user)
-        let targetUserType: UserType = (userType == .lookingForServices) ? .providingServices : .lookingForServices
-
-        // Fetch tasks from users with opposite user type
+        // IMPORTANT: Fetch ALL tasks and filter client-side
+        // This handles backwards compatibility for tasks without creatorUserType
         listener = db.collection("tasks")
-            .whereField("creatorUserType", isEqualTo: targetUserType.rawValue)
             .order(by: "timestamp", descending: true)
-            .addSnapshotListener { snapshot, error in
-                guard let docs = snapshot?.documents else { return }
-                self.tasks = docs.compactMap { try? $0.data(as: Task.self) }
+            .addSnapshotListener { [weak self] snapshot, error in
+                guard let self = self else { return }
+
+                if let error = error {
+                    print("❌ Error fetching tasks: \(error.localizedDescription)")
+                    return
+                }
+
+                guard let docs = snapshot?.documents else {
+                    print("📋 No task documents found")
+                    return
+                }
+
+                // Parse all tasks
+                let allTasks = docs.compactMap { try? $0.data(as: Task.self) }
+                print("📋 Fetched \(allTasks.count) total tasks from Firestore")
+
+                // Filter based on current user type
+                if let userType = self.currentUserType {
+                    let filteredTasks: [Task]
+
+                    if userType == .lookingForServices {
+                        // Service seekers see THEIR OWN tasks (the ones they posted)
+                        print("📋 Filtering tasks: showing own tasks for service seeker")
+                        filteredTasks = allTasks.filter { task in
+                            task.creatorUserId == self.currentUserId
+                        }
+                    } else {
+                        // Service providers see tasks FROM service seekers (tasks they can respond to)
+                        print("📋 Filtering tasks: showing service seeker tasks for service provider")
+                        filteredTasks = allTasks.filter { task in
+                            if let creatorType = task.creatorUserType {
+                                return creatorType == UserType.lookingForServices.rawValue
+                            } else {
+                                // For backwards compatibility: include tasks without userType
+                                print("⚠️ Task '\(task.title)' has no creatorUserType - including it")
+                                return true
+                            }
+                        }
+                    }
+
+                    print("📋 Showing \(filteredTasks.count) filtered tasks")
+                    self.tasks = filteredTasks
+                } else {
+                    // If user hasn't set their type yet, show all tasks
+                    print("📋 No user type set - showing all \(allTasks.count) tasks")
+                    self.tasks = allTasks
+                }
             }
     }
 
-    func addTask(title: String, description: String) {
+    func addTask(
+        title: String,
+        description: String,
+        budget: Double?,
+        location: String?,
+        category: ServiceCategory?,
+        deadline: Date?,
+        estimatedDuration: String?
+    ) {
+        // Validate that user has a type set
+        guard let userType = currentUserType else {
+            print("❌ Cannot create task: user type not set!")
+            return
+        }
+
+        print("📋 Creating task with creatorUserType: \(userType.rawValue)")
+
         let newTask = Task(
             title: title,
             description: description,
             creatorUserId: currentUserId,
             creatorUsername: currentUsername,
-            creatorUserType: currentUserType?.rawValue,
+            creatorUserType: userType.rawValue,
             timestamp: Date(),
-            responses: []
+            responses: [],
+            isArchived: false,
+            budget: budget,
+            location: location,
+            category: category,
+            status: .open,
+            deadline: deadline,
+            estimatedDuration: estimatedDuration,
+            assignedProviderId: nil,
+            assignedProviderUsername: nil
         )
+
         do {
             _ = try db.collection("tasks").addDocument(from: newTask)
+            print("✅ Task created successfully - Category: \(category?.rawValue ?? "none"), Location: \(location ?? "none"), Budget: $\(budget ?? 0)")
         } catch {
-            print("Error adding task: \(error)")
+            print("❌ Error adding task: \(error)")
         }
     }
 
@@ -99,13 +160,30 @@ class TasksViewModel: ObservableObject {
         ], merge: true)
     }
 
-    func addResponse(to task: Task, message: String, completion: (() -> Void)? = nil) {
-        guard let id = task.id else { return }
+    func addResponse(to task: Task, message: String, quotedPrice: Double?, completion: ((Bool) -> Void)? = nil) {
+        guard let id = task.id else { 
+            completion?(false)
+            return 
+        }
+        
+        // Check if user has already responded to this task
+        let hasAlreadyResponded = task.responses.contains { response in
+            response.fromUserId == currentUserId
+        }
+        
+        if hasAlreadyResponded {
+            print("❌ User has already responded to this task")
+            completion?(false)
+            return
+        }
+        
         let newResponse = Response(
             fromUserId: currentUserId,
             fromUsername: currentUsername,
             message: message,
-            timestamp: Date()
+            timestamp: Date(),
+            quotedPrice: quotedPrice,
+            isAccepted: false
         )
         do {
             let encoded = try Firestore.Encoder().encode(newResponse)
@@ -114,12 +192,26 @@ class TasksViewModel: ObservableObject {
             ]) { error in
                 if let error = error {
                     print("Error adding response: \(error)")
+                    completion?(false)
+                } else {
+                    if let price = quotedPrice {
+                        print("✅ Response added with quote: $\(price)")
+                    } else {
+                        print("✅ Response added without quote")
+                    }
+                    completion?(true)
                 }
-                completion?()
             }
         } catch {
             print("Error encoding response: \(error)")
-            completion?()
+            completion?(false)
+        }
+    }
+
+    func hasUserRespondedToTask(_ task: Task, userId: String? = nil) -> Bool {
+        let userIdToCheck = userId ?? currentUserId
+        return task.responses.contains { response in
+            response.fromUserId == userIdToCheck
         }
     }
 

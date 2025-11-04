@@ -89,9 +89,9 @@ struct RootSwitcherView: View {
             print("🚀 RootSwitcherView appeared - isLoggedIn: \(authViewModel.isLoggedIn)")
 
             // TEMPORARY FIX: Uncomment these 3 lines to sign out and start fresh for testing
-             try? Auth.auth().signOut()
-             authViewModel.currentUser = nil
-             userVM.clearProfile()
+            // try? Auth.auth().signOut()
+            // authViewModel.currentUser = nil
+            // userVM.clearProfile()
 
             // Fetch profile on app start if user is already logged in
             if authViewModel.isLoggedIn && userVM.profile == nil && !userVM.isLoadingProfile {

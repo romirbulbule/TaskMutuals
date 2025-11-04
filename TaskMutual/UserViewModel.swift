@@ -72,8 +72,9 @@ class UserViewModel: ObservableObject {
                 lastName: lastName,
                 username: username,
                 dateOfBirth: dateOfBirth,
-                bio: bioValue, // If your UserProfile includes bio in its Codable
-                profileImageURL: self.profile?.profileImageURL // Keep avatar if editing
+                bio: bioValue,
+                profileImageURL: self.profile?.profileImageURL,
+                userType: self.profile?.userType // IMPORTANT: Preserve user type!
             )
             let batch = self.db.batch()
             let userRef = usersRef.document(userID)
@@ -103,39 +104,24 @@ class UserViewModel: ObservableObject {
     
     // MARK: - Edit Profile (for name, username, bio in-app editing)
     func updateProfile(name: String, username: String, bio: String, completion: (() -> Void)? = nil) {
-        guard let profile = self.profile else { completion?(); return }
-        var firstName = ""
-        var lastName = ""
-        let parts = name.split(separator: " ")
-        if !parts.isEmpty {
-            firstName = String(parts[0])
-            if parts.count > 1 {
-                lastName = parts[1...].joined(separator: " ")
-            }
+        guard let profile = self.profile, let userId = profile.id else {
+            completion?()
+            return
         }
-        let dateOfBirth = profile.dateOfBirth
-        
-        // This will trigger your username collision logic
-        createOrUpdateProfile(
-            firstName: firstName,
-            lastName: lastName,
-            username: username,
-            dateOfBirth: dateOfBirth
-        ) { result in
-            // Always update the local bio value and Firestore, even if other data failed
-            DispatchQueue.main.async {
-                self.profile?.firstName = firstName
-                self.profile?.lastName = lastName
-                self.profile?.username = username
-                self.profile?.bio = bio
-            }
-            if let userId = profile.id {
-                self.db.collection("users").document(userId).updateData(["bio": bio]) { _ in
-                    completion?()
-                }
+
+        // Just update the bio directly in Firestore - don't recreate the whole profile
+        // This prevents losing userType and other fields
+        db.collection("users").document(userId).updateData(["bio": bio]) { error in
+            if let error = error {
+                print("❌ Error updating bio: \(error.localizedDescription)")
             } else {
-                completion?()
+                print("✅ Bio updated successfully")
+                // Update local copy
+                DispatchQueue.main.async {
+                    self.profile?.bio = bio
+                }
             }
+            completion?()
         }
     }
     

@@ -18,23 +18,29 @@ struct MultilineTextField: UIViewRepresentable {
 
     class Coordinator: NSObject, UITextViewDelegate {
         var parent: MultilineTextField
+        var isEditing: Bool = false
 
         init(_ parent: MultilineTextField) {
             self.parent = parent
         }
 
         func textViewDidChange(_ textView: UITextView) {
-            parent.text = textView.text
+            // Only update the binding if we're not in the middle of clearing placeholder
+            if isEditing {
+                parent.text = textView.text
+            }
         }
 
         func textViewDidBeginEditing(_ textView: UITextView) {
+            isEditing = true
             if textView.textColor == UIColor.lightGray {
                 textView.text = ""
-                textView.textColor = UIColor.label
+                textView.textColor = .white
             }
         }
 
         func textViewDidEndEditing(_ textView: UITextView) {
+            isEditing = false
             if textView.text.isEmpty {
                 textView.text = parent.placeholder
                 textView.textColor = UIColor.lightGray
@@ -73,11 +79,24 @@ struct MultilineTextField: UIViewRepresentable {
     }
 
     func updateUIView(_ textView: UITextView, context: Context) {
-        textView.text = text.isEmpty ? placeholder : text
-        textView.textColor = text.isEmpty ? UIColor.lightGray : UIColor.label
+        // Only update if text actually changed to avoid cursor jumping
+        // Don't restore placeholder if user is actively editing (textView is first responder)
+        if text.isEmpty && !textView.isFirstResponder {
+            if textView.text != placeholder {
+                textView.text = placeholder
+                textView.textColor = UIColor.lightGray
+            }
+        } else if !text.isEmpty {
+            if textView.text != text {
+                textView.text = text
+            }
+            textView.textColor = .white
+        }
+        // If text is empty AND textView is first responder, don't change anything
+        // (user is editing, let delegate methods handle it)
+
         textView.backgroundColor = background
         textView.layer.cornerRadius = cornerRadius
-        textView.textColor = .white
 
         // Height constraint if you want (optional for full grow):
         let fittingSize = CGSize(width: textView.frame.width, height: CGFloat.greatestFiniteMagnitude)

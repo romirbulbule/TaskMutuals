@@ -7,6 +7,7 @@
 
 import SwiftUI
 import FirebaseFirestore
+import FirebaseAuth
 
 struct MainFeedView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
@@ -62,9 +63,18 @@ struct MainFeedView: View {
                             Button("Report") {
                                 // implement showingReportAlert logic if needed
                             }
-                            Button("Respond") {
-                                selectedTask = task
-                                showResponseSheet = true
+                            
+                            // Only show Respond button if user hasn't already responded
+                            if !task.hasUserResponded(userId: Auth.auth().currentUser?.uid ?? "") {
+                                Button("Respond") {
+                                    selectedTask = task
+                                    showResponseSheet = true
+                                }
+                            } else {
+                                Button("View Your Response") {
+                                    // Could navigate to view their existing response
+                                }
+                                .disabled(true)
                             }
                         }
                     }
@@ -89,8 +99,16 @@ struct MainFeedView: View {
             }
             .background(Theme.background.ignoresSafeArea())
             .sheet(isPresented: $showPostTaskSheet) {
-                PostTaskView { title, description in
-                    tasksVM.addTask(title: title, description: description)
+                PostTaskView { title, description, budget, location, category, deadline, estimatedDuration in
+                    tasksVM.addTask(
+                        title: title,
+                        description: description,
+                        budget: budget,
+                        location: location,
+                        category: category,
+                        deadline: deadline,
+                        estimatedDuration: estimatedDuration
+                    )
                     showPostTaskSheet = false
                 }
                 .environmentObject(authViewModel)
@@ -105,9 +123,13 @@ struct MainFeedView: View {
             }
             .sheet(isPresented: $showResponseSheet) {
                 if let task = selectedTask {
-                    ResponseView(post: task) { message in
-                        tasksVM.addResponse(to: task, message: message) {
-                            showResponseSheet = false
+                    ResponseView(post: task) { message, quotedPrice in
+                        tasksVM.addResponse(to: task, message: message, quotedPrice: quotedPrice) { success in
+                            if success {
+                                showResponseSheet = false
+                            }
+                            // Note: If success is false, the sheet stays open so user knows something went wrong
+                            // You could add an alert here if needed
                         }
                     }
                 }

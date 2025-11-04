@@ -7,16 +7,22 @@
 
 import SwiftUI
 import FirebaseFirestore
+import FirebaseAuth
 
 struct FeedView: View {
     @EnvironmentObject var userVM: UserViewModel
     @EnvironmentObject var tasksVM: TasksViewModel
     @StateObject private var modalManager = ModalManager()
     @State private var showPostTaskSheet = false
+    @State private var showUserTypeError = false
 
     // Determine if user can post tasks (only service seekers can post)
     var canPostTasks: Bool {
         userVM.profile?.userType == .lookingForServices
+    }
+
+    var hasUserType: Bool {
+        userVM.profile?.userType != nil
     }
 
     var body: some View {
@@ -48,6 +54,7 @@ struct FeedView: View {
                                     TaskCardView(
                                         task: task,
                                         currentUserId: tasksVM.currentUserId,
+                                        currentUserType: userVM.profile?.userType,
                                         onEdit: { modalManager.showEdit(for: task) },
                                         onDelete: { tasksVM.removeTask(task) },
                                         onReport: { /* implement report logic here */ },
@@ -65,7 +72,13 @@ struct FeedView: View {
             .navigationBarItems(leading:
                 Group {
                     if canPostTasks {
-                        Button(action: { showPostTaskSheet = true }) {
+                        Button(action: {
+                            if hasUserType {
+                                showPostTaskSheet = true
+                            } else {
+                                showUserTypeError = true
+                            }
+                        }) {
                             Image(systemName: "plus")
                                 .font(.title2)
                                 .foregroundColor(Theme.accent)
@@ -74,10 +87,23 @@ struct FeedView: View {
                 }
             )
             .sheet(isPresented: $showPostTaskSheet) {
-                PostTaskView { title, description in
-                    tasksVM.addTask(title: title, description: description)
+                PostTaskView { title, description, budget, location, category, deadline, estimatedDuration in
+                    tasksVM.addTask(
+                        title: title,
+                        description: description,
+                        budget: budget,
+                        location: location,
+                        category: category,
+                        deadline: deadline,
+                        estimatedDuration: estimatedDuration
+                    )
                     showPostTaskSheet = false
                 }
+            }
+            .alert("User Type Required", isPresented: $showUserTypeError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Please set your user type in Profile settings before posting tasks.")
             }
             .sheet(isPresented: modalManager.showEditSheet) {
                 if let task = modalManager.editTask {
@@ -89,9 +115,12 @@ struct FeedView: View {
             }
             .sheet(isPresented: modalManager.showResponseSheet) {
                 if let task = modalManager.responseTask {
-                    ResponseView(post: task) { sentMessage in
-                        tasksVM.addResponse(to: task, message: sentMessage) {
-                            modalManager.closeResponse()
+                    ResponseView(post: task) { sentMessage, quotedPrice in
+                        tasksVM.addResponse(to: task, message: sentMessage, quotedPrice: quotedPrice) { success in
+                            if success {
+                                modalManager.closeResponse()
+                            }
+                            // If success is false, keep the sheet open so user knows something went wrong
                         }
                     }
                 }
