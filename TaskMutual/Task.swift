@@ -98,6 +98,7 @@ struct Task: Identifiable, Codable, Equatable {
     var estimatedDuration: String? // e.g., "2-3 hours", "Half day"
     var assignedProviderId: String? // ID of provider who was accepted
     var assignedProviderUsername: String? // Username of accepted provider
+    var imageURLs: [String]? // Task images (up to 5)
 }
 
 // MARK: - Task Extensions

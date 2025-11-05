@@ -19,8 +19,8 @@ struct TaskMutualApp: App {
     init() {
         FirebaseApp.configure()
 
-        UITabBar.appearance().barTintColor = UIColor(named: "BrandBackground")
-        UITabBar.appearance().backgroundColor = UIColor(named: "BrandBackground")
+        UITabBar.appearance().barTintColor = UIColor(named: "AppBackground")
+        UITabBar.appearance().backgroundColor = UIColor(named: "AppBackground")
         UITabBar.appearance().unselectedItemTintColor = UIColor.white.withAlphaComponent(0.5)
         UITabBar.appearance().tintColor = UIColor.white
     }

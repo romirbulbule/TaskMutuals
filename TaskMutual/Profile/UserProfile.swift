@@ -24,6 +24,10 @@ struct UserProfile: Identifiable, Codable, Equatable {
     var profileImageURL: String?
     var userType: UserType? // User's service preference
 
+    // Rating info (for service providers)
+    var averageRating: Double?
+    var totalRatings: Int?
+
     // Custom Equatable implementation (needed for @DocumentID)
     static func == (lhs: UserProfile, rhs: UserProfile) -> Bool {
         return lhs.id == rhs.id &&
@@ -33,7 +37,16 @@ struct UserProfile: Identifiable, Codable, Equatable {
                lhs.dateOfBirth == rhs.dateOfBirth &&
                lhs.bio == rhs.bio &&
                lhs.profileImageURL == rhs.profileImageURL &&
-               lhs.userType == rhs.userType
+               lhs.userType == rhs.userType &&
+               lhs.averageRating == rhs.averageRating &&
+               lhs.totalRatings == rhs.totalRatings
+    }
+
+    var ratingDisplay: String? {
+        guard let avg = averageRating, let total = totalRatings, total > 0 else {
+            return nil
+        }
+        return String(format: "%.1f ⭐️ (\(total))", avg)
     }
 }
 

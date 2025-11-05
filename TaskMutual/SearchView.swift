@@ -2,12 +2,9 @@
 //  SearchView.swift
 //  TaskMutual
 //
-//  Created by Romir Bulbule on 9/30/25.
+//  Search view with text search functionality for tasks
 //
 
-
-/*
-
 import SwiftUI
 
 extension View {
@@ -24,258 +21,189 @@ extension View {
 }
 
 struct SearchView: View {
+    @EnvironmentObject var tasksVM: TasksViewModel
+    @EnvironmentObject var userVM: UserViewModel
     @State private var query: String = ""
     @State private var results: [Task] = []
-
-    // 6 categories with 5 tasks each
-    let categories: [(title: String, tasks: [String])] = [
-        ("Fall Projects", ["TV Mounting", "Furniture Assembly", "Cleaning", "Yard Work", "Gutter Cleaning"]),
-        ("Your Moving Checklist", ["Help Moving", "Unpacking", "Cleaning", "Box Disposal", "Furniture Setup"]),
-        ("Home Improvement Help", ["Door Repair", "Caulking", "Electrical Work", "Painting", "Plumbing Fix"]),
-        ("Outdoor Maintenance", ["Lawn Mowing", "Leaf Raking", "Fence Repair", "Deck Cleaning", "Patio Setup"]),
-        ("Smart Home Setup", ["Wi-Fi Install", "Camera Mounting", "Thermostat Setup", "Light Automation", "Device Sync"]),
-        ("Seasonal Tasks", ["Snow Shoveling", "AC Checkup", "Heater Tune-up", "Pool Cleaning", "Window Insulation"])
-    ]
+    @State private var isSearching = false
 
     var body: some View {
         NavigationView {
-            ScrollView(.vertical, showsIndicators: true) {
-                VStack(spacing: 28) {
+            ZStack {
+                Theme.background.ignoresSafeArea()
 
-                    // Search bar
-                    TextField("", text: $query)
-                        .placeholder(when: query.isEmpty) {
-                            Text("Search tasks, users and posts...")
+                ScrollView(.vertical, showsIndicators: true) {
+                    VStack(spacing: 28) {
+
+                        // Search bar
+                        HStack {
+                            Image(systemName: "magnifyingglass")
+                                .foregroundColor(.black.opacity(0.6))
+                            TextField("", text: $query)
+                                .placeholder(when: query.isEmpty) {
+                                    Text("Search tasks by title, description, or location...")
+                                        .foregroundColor(.black.opacity(0.5))
+                                        .font(.body)
+                                }
                                 .foregroundColor(.black)
-                                .font(.body)
+                                .onChange(of: query) { newValue in
+                                    performSearch(query: newValue)
+                                }
+                            if !query.isEmpty {
+                                Button(action: {
+                                    query = ""
+                                    results = []
+                                }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundColor(.black.opacity(0.6))
+                                }
+                            }
                         }
                         .padding()
-                        .background(Color.black.opacity(0.15))
+                        .background(Color.white.opacity(0.9))
                         .cornerRadius(10)
-                        .foregroundColor(.black)
                         .padding(.horizontal)
+                        .padding(.top, 8)
 
-                    // MARK: - Scrollable Category Sections
-                    ForEach(categories, id: \.title) { category in
-                        VStack(alignment: .leading, spacing: 15) {
-                            // Section title
-                            Text(category.title)
-                                .font(.title3.bold())
-                                .foregroundColor(.black)
-                                .padding(.horizontal, 20)
+                        // Search results
+                        if isSearching {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .padding()
+                        } else if !query.isEmpty && results.isEmpty {
+                            VStack(spacing: 12) {
+                                Image(systemName: "magnifyingglass")
+                                    .font(.system(size: 48))
+                                    .foregroundColor(.white.opacity(0.5))
+                                Text("No tasks found")
+                                    .font(.headline)
+                                    .foregroundColor(.white.opacity(0.7))
+                                Text("Try searching with different keywords")
+                                    .font(.subheadline)
+                                    .foregroundColor(.white.opacity(0.5))
+                            }
+                            .padding()
+                        } else if !results.isEmpty {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Search Results (\(results.count))")
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal)
 
-                            // Horizontal scroll of tasks
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 4) {
-                                    ForEach(category.tasks, id: \.self) { task in
-                                        VStack(spacing: 10) {
-                                            // Enlarged main icon (replacing opaque box)
-                                            Image(systemName: "wrench.and.screwdriver.fill")
-                                                .resizable()
-                                                .scaledToFit()
-                                                .frame(width: 150, height: 85) // reduced width for ~2.5 images on screen
-                                                .foregroundColor(.black)
-                                                .padding(.bottom, 6)
-
-                                            // Task title beneath icon
-                                            Text(task)
-                                                .font(.subheadline)
-                                                .multilineTextAlignment(.center)
-                                                .foregroundColor(.black)
-                                                .frame(width: 130)
-                                        }
+                                ForEach(results) { task in
+                                    NavigationLink(destination: TaskDetailView(task: task).environmentObject(userVM).environmentObject(tasksVM)) {
+                                        TaskCardView(
+                                            task: task,
+                                            currentUserId: userVM.profile?.id ?? "",
+                                            currentUserType: userVM.profile?.userType,
+                                            onEdit: {},
+                                            onDelete: {},
+                                            onReport: {},
+                                            onRespond: {}
+                                        )
+                                        .padding(.horizontal)
                                     }
                                 }
-                                .padding(.horizontal, 13)
                             }
                         }
-                    }
 
-                    // Divider before results
-                    Divider()
-                        .background(Color.black.opacity(0.3))
-                        .padding(.horizontal, 13)
+                        // Category browsing (show when not searching)
+                        if query.isEmpty {
+                            VStack(alignment: .leading, spacing: 16) {
+                                Text("Browse by Category")
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal)
 
-                    // Search results (existing section)
-                    if !results.isEmpty {
-                        List {
-                            ForEach(results) { task in
-                                VStack(alignment: .leading) {
-                                    Text(task.title)
-                                        .font(.headline)
-                                        .foregroundColor(Theme.accent)
-                                    Text(task.description)
-                                        .font(.subheadline)
-                                        .foregroundColor(.black.opacity(0.8))
-                                }
-                                .padding(.vertical, 4)
-                                .background(Theme.background)
-                            }
-                        }
-                        .listStyle(.plain)
-                        .frame(minHeight: 300)
-                        .background(Theme.background)
-                    }
-                }
-                .padding(.bottom, 30)
-                .background(Theme.background)
-                .navigationTitle("Search")
-                .foregroundColor(.white)
-            }
-            .background(Theme.background.ignoresSafeArea())
-        }
-    }
-}
-*/
-import SwiftUI
+                                ForEach(ServiceCategory.allCases, id: \.self) { category in
+                                    Button(action: {
+                                        searchByCategory(category)
+                                    }) {
+                                        HStack {
+                                            Image(systemName: category.icon)
+                                                .font(.system(size: 24))
+                                                .foregroundColor(Theme.accent)
+                                                .frame(width: 40)
 
-extension View {
-    func placeholder<Content: View>(
-        when shouldShow: Bool,
-        alignment: Alignment = .leading,
-        @ViewBuilder placeholder: () -> Content
-    ) -> some View {
-        ZStack(alignment: alignment) {
-            placeholder().opacity(shouldShow ? 1 : 0)
-            self
-        }
-    }
-}
+                                            Text(category.rawValue)
+                                                .font(.headline)
+                                                .foregroundColor(.white)
 
-struct SearchView: View {
-    @State private var query: String = ""
-    @State private var results: [Task] = []
+                                            Spacer()
 
-    // 6 categories with 5 tasks each (each task now has imageName)
-    let categories: [(title: String, tasks: [(name: String, imageName: String)])] = [
-        ("Fall Projects", [
-            ("TV Mounting", "tv_mounting_icon"),
-            ("Furniture Assembly", "furniture_assembly_icon"),
-            ("Cleaning", "cleaning_icon"),
-            ("Yard Work", "yard_work_icon"),
-            ("Gutter Cleaning", "gutter_cleaning_icon")
-        ]),
-        ("Your Moving Checklist", [
-            ("Help Moving", "help_moving_icon"),
-            ("Unpacking", "unpacking_icon"),
-            ("Cleaning", "cleaning_icon_2"),
-            ("Box Disposal", "box_disposal_icon"),
-            ("Furniture Setup", "furniture_setup_icon")
-        ]),
-        ("Home Improvement Help", [
-            ("Door Repair", "door_repair_icon"),
-            ("Caulking", "caulking_icon"),
-            ("Electrical Work", "electrical_work_icon"),
-            ("Painting", "painting_icon"),
-            ("Plumbing Fix", "plumbing_fix_icon")
-        ]),
-        ("Outdoor Maintenance", [
-            ("Lawn Mowing", "lawn_mowing_icon"),
-            ("Leaf Raking", "leaf_raking_icon"),
-            ("Fence Repair", "fence_repair_icon"),
-            ("Deck Cleaning", "deck_cleaning_icon"),
-            ("Patio Setup", "patio_setup_icon")
-        ]),
-        ("Smart Home Setup", [
-            ("Wi‑Fi Install", "wifi_install_icon"),
-            ("Camera Mounting", "camera_mounting_icon"),
-            ("Thermostat Setup", "thermostat_setup_icon"),
-            ("Light Automation", "light_automation_icon"),
-            ("Device Sync", "device_sync_icon")
-        ]),
-        ("Seasonal Tasks", [
-            ("Snow Shoveling", "snow_shoveling_icon"),
-            ("AC Checkup", "ac_checkup_icon"),
-            ("Heater Tune‑up", "heater_tuneup_icon"),
-            ("Pool Cleaning", "pool_cleaning_icon"),
-            ("Window Insulation", "window_insulation_icon")
-        ])
-    ]
-
-    var body: some View {
-        NavigationView {
-            ScrollView(.vertical, showsIndicators: true) {
-                VStack(spacing: 28) {
-
-                    // Search bar
-                    TextField("", text: $query)
-                        .placeholder(when: query.isEmpty) {
-                            Text("Search tasks, users and posts...")
-                                .foregroundColor(.black)
-                                .font(.body)
-                        }
-                        .padding()
-                        .background(Color.black.opacity(0.15))
-                        .cornerRadius(10)
-                        .foregroundColor(.black)
-                        .padding(.horizontal)
-
-                    // MARK: - Scrollable Category Sections
-                    ForEach(categories, id: \.title) { category in
-                        VStack(alignment: .leading, spacing: 15) {
-                            // Section title
-                            Text(category.title)
-                                .font(.title3.bold())
-                                .foregroundColor(.black)
-                                .padding(.horizontal, 20)
-
-                            // Horizontal scroll of tasks
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 4) {
-                                    ForEach(category.tasks, id: \.name) { task in
-                                        VStack(spacing: 10) {
-                                            Image(task.imageName)
-                                                .resizable()
-                                                .scaledToFit()
-                                                .frame(width: 150, height: 85)
-                                                .foregroundColor(.black)
-                                                .padding(.bottom, 6)
-
-                                            Text(task.name)
-                                                .font(.subheadline)
-                                                .multilineTextAlignment(.center)
-                                                .foregroundColor(.black)
-                                                .frame(width: 130)
+                                            Image(systemName: "chevron.right")
+                                                .foregroundColor(.white.opacity(0.5))
                                         }
+                                        .padding()
+                                        .background(Color.white.opacity(0.1))
+                                        .cornerRadius(12)
                                     }
+                                    .buttonStyle(PlainButtonStyle())
                                 }
-                                .padding(.horizontal, 13)
+                                .padding(.horizontal)
                             }
                         }
                     }
-
-                    // Divider before results
-                    Divider()
-                        .background(Color.black.opacity(0.3))
-                        .padding(.horizontal, 13)
-
-                    // Search results (existing section)
-                    if !results.isEmpty {
-                        List {
-                            ForEach(results) { task in
-                                VStack(alignment: .leading) {
-                                    Text(task.title)
-                                        .font(.headline)
-                                        .foregroundColor(Theme.accent)
-                                    Text(task.description)
-                                        .font(.subheadline)
-                                        .foregroundColor(.black.opacity(0.8))
-                                }
-                                .padding(.vertical, 4)
-                                .background(Theme.background)
-                            }
-                        }
-                        .listStyle(.plain)
-                        .frame(minHeight: 300)
-                        .background(Theme.background)
-                    }
+                    .padding(.bottom, 30)
                 }
-                .padding(.bottom, 30)
-                .background(Theme.background)
-                .navigationTitle("Search")
-                .foregroundColor(.white)
             }
-            .background(Theme.background.ignoresSafeArea())
+            .navigationTitle("Search")
+            .navigationBarTitleDisplayMode(.large)
         }
     }
+
+    private func performSearch(query: String) {
+        guard !query.isEmpty else {
+            results = []
+            return
+        }
+
+        isSearching = true
+
+        // Simulate a short delay for search
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            let lowercasedQuery = query.lowercased()
+
+            results = tasksVM.tasks.filter { task in
+                // Don't show archived tasks in search
+                guard !task.isArchived else { return false }
+
+                // Search in title
+                if task.title.lowercased().contains(lowercasedQuery) {
+                    return true
+                }
+
+                // Search in description
+                if task.description.lowercased().contains(lowercasedQuery) {
+                    return true
+                }
+
+                // Search in location
+                if let location = task.location, location.lowercased().contains(lowercasedQuery) {
+                    return true
+                }
+
+                // Search in category
+                if let category = task.category, category.rawValue.lowercased().contains(lowercasedQuery) {
+                    return true
+                }
+
+                return false
+            }
+
+            isSearching = false
+        }
+    }
+
+    private func searchByCategory(_ category: ServiceCategory) {
+        query = category.rawValue
+        performSearch(query: query)
+    }
+}
+
+#Preview {
+    SearchView()
+        .environmentObject(TasksViewModel())
+        .environmentObject(UserViewModel())
 }

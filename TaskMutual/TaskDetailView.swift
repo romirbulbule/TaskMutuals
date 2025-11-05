@@ -16,6 +16,11 @@ struct TaskDetailView: View {
     @State private var selectedResponse: Response?
     @State private var showEditResponseSheet = false
     @State private var editingResponse: Response?
+    @State private var showPaymentSheet = false
+    @State private var showMarkCompleteAlert = false
+    @State private var showRatingSheet = false
+    @State private var hasRatedProvider = false
+    @State private var showDisputeSheet = false
 
     var isTaskCreator: Bool {
         task.creatorUserId == Auth.auth().currentUser?.uid
@@ -107,6 +112,12 @@ struct TaskDetailView: View {
 
                 Divider()
 
+                // Task Images Gallery
+                if let imageURLs = task.imageURLs, !imageURLs.isEmpty {
+                    TaskImageGallery(imageURLs: imageURLs)
+                    Divider()
+                }
+
                 // Assigned Provider (if any)
                 if let assignedUsername = task.assignedProviderUsername {
                     VStack(alignment: .leading, spacing: 8) {
@@ -119,6 +130,81 @@ struct TaskDetailView: View {
                                 .fontWeight(.medium)
                         }
                     }
+
+                    // Task Creator Actions
+                    if isTaskCreator {
+                        VStack(spacing: 12) {
+                            // Mark as Complete button (for assigned or in-progress tasks)
+                            if task.status == .assigned || task.status == .inProgress {
+                                Button(action: { showMarkCompleteAlert = true }) {
+                                    HStack {
+                                        Image(systemName: "checkmark.circle.fill")
+                                        Text("Mark as Complete")
+                                            .fontWeight(.semibold)
+                                    }
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                                    .background(Color.green)
+                                    .cornerRadius(10)
+                                }
+                            }
+
+                            // Pay Provider button (for completed tasks)
+                            if task.status == .completed, let providerId = task.assignedProviderId {
+                                Button(action: { showPaymentSheet = true }) {
+                                    HStack {
+                                        Image(systemName: "dollarsign.circle.fill")
+                                        if let price = getAcceptedQuote() {
+                                            Text("Pay $\(Int(price))")
+                                                .fontWeight(.semibold)
+                                        } else if let budget = task.budget {
+                                            Text("Pay $\(Int(budget))")
+                                                .fontWeight(.semibold)
+                                        } else {
+                                            Text("Pay Provider")
+                                                .fontWeight(.semibold)
+                                        }
+                                    }
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                                    .background(Theme.accent)
+                                    .cornerRadius(10)
+                                }
+
+                                // Rate Provider button
+                                Button(action: { showRatingSheet = true }) {
+                                    HStack {
+                                        Image(systemName: hasRatedProvider ? "star.fill" : "star")
+                                        Text(hasRatedProvider ? "View Your Rating" : "Rate Provider")
+                                            .fontWeight(.semibold)
+                                    }
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                                    .background(hasRatedProvider ? Color.yellow.opacity(0.7) : Color.orange)
+                                    .cornerRadius(10)
+                                }
+
+                                // File Dispute button
+                                Button(action: { showDisputeSheet = true }) {
+                                    HStack {
+                                        Image(systemName: "exclamationmark.triangle.fill")
+                                        Text("File Dispute")
+                                            .fontWeight(.semibold)
+                                    }
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                                    .background(Color.red.opacity(0.8))
+                                    .cornerRadius(10)
+                                }
+                            }
+                        }
+                        .padding(.top, 8)
+                    }
+
                     Divider()
                 }
 
@@ -175,6 +261,44 @@ struct TaskDetailView: View {
                 )
             }
         }
+        .sheet(isPresented: $showPaymentSheet) {
+            if let providerId = task.assignedProviderId,
+               let providerUsername = task.assignedProviderUsername {
+                let amount = getAcceptedQuote() ?? task.budget ?? 0.0
+                PaymentView(
+                    task: task,
+                    providerUsername: providerUsername,
+                    providerId: providerId,
+                    amount: amount
+                )
+                .environmentObject(userVM)
+            }
+        }
+        .sheet(isPresented: $showRatingSheet) {
+            if let providerId = task.assignedProviderId,
+               let providerUsername = task.assignedProviderUsername {
+                RateProviderView(
+                    task: task,
+                    providerId: providerId,
+                    providerUsername: providerUsername
+                )
+                .environmentObject(userVM)
+            }
+        }
+        .sheet(isPresented: $showDisputeSheet) {
+            if let providerId = task.assignedProviderId,
+               let providerUsername = task.assignedProviderUsername {
+                FileDisputeView(
+                    task: task,
+                    respondentId: providerId,
+                    respondentUsername: providerUsername
+                )
+                .environmentObject(userVM)
+            }
+        }
+        .onAppear {
+            checkIfUserRatedProvider()
+        }
         .alert("Accept This Provider?", isPresented: $showAcceptAlert) {
             Button("Cancel", role: .cancel) {
                 selectedResponse = nil
@@ -192,6 +316,14 @@ struct TaskDetailView: View {
                     Text("Accept \(response.fromUsername) for this task?")
                 }
             }
+        }
+        .alert("Mark Task as Complete?", isPresented: $showMarkCompleteAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Mark Complete") {
+                markTaskAsComplete()
+            }
+        } message: {
+            Text("This will mark the task as completed. You can then proceed to pay the provider.")
         }
     }
 
@@ -275,6 +407,41 @@ struct TaskDetailView: View {
                 print("❌ Error deleting response: \(error)")
             } else {
                 print("🗑️ Response deleted successfully")
+            }
+        }
+    }
+
+    func markTaskAsComplete() {
+        guard let taskId = task.id else { return }
+        let db = Firestore.firestore()
+
+        db.collection("tasks").document(taskId).updateData([
+            "status": TaskStatus.completed.rawValue
+        ]) { error in
+            if let error = error {
+                print("❌ Error marking task as complete: \(error)")
+            } else {
+                print("✅ Task marked as complete")
+            }
+        }
+    }
+
+    func getAcceptedQuote() -> Double? {
+        return task.responses.first(where: { $0.isAccepted })?.quotedPrice
+    }
+
+    func checkIfUserRatedProvider() {
+        guard let taskId = task.id,
+              let userId = Auth.auth().currentUser?.uid,
+              isTaskCreator,
+              task.status == .completed else {
+            return
+        }
+
+        let ratingService = RatingService()
+        ratingService.hasUserRatedTask(taskId: taskId, reviewerId: userId) { result in
+            if case .success(let hasRated) = result {
+                hasRatedProvider = hasRated
             }
         }
     }

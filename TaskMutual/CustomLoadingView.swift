@@ -73,7 +73,7 @@ struct CustomLoadingView: View {
             // --- Gradient background: replace with your brand color set names or .purple/.blue ---
             LinearGradient(
                 gradient: Gradient(colors: [
-                    Color("BrandAccent"), Color("BrandBackground")
+                    Color("BrandAccent"), Color("AppBackground")
                 ]),
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing

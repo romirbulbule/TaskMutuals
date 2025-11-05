@@ -50,20 +50,6 @@
 			);
 			target = 072FE9722E82461200AB86E2 /* TaskMutual */;
 		};
-		072FE9A42E8249FD00AB86E2 /* Exceptions for "TaskMutualUITests" folder in "TaskMutual" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				"GoogleService-Info.plist",
-			);
-			target = 072FE9722E82461200AB86E2 /* TaskMutual */;
-		};
-		072FE9A52E8249FD00AB86E2 /* Exceptions for "TaskMutualUITests" folder in "TaskMutualUITests" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				"GoogleService-Info.plist",
-			);
-			target = 072FE98D2E82461500AB86E2 /* TaskMutualUITests */;
-		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -82,10 +68,6 @@
 		};
 		072FE9912E82461500AB86E2 /* TaskMutualUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				072FE9A42E8249FD00AB86E2 /* Exceptions for "TaskMutualUITests" folder in "TaskMutual" target */,
-				072FE9A52E8249FD00AB86E2 /* Exceptions for "TaskMutualUITests" folder in "TaskMutualUITests" target */,
-			);
 			path = TaskMutualUITests;
 			sourceTree = "<group>";
 		};

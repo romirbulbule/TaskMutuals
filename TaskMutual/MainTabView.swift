@@ -21,6 +21,8 @@ struct MainTabView: View {
                     Text("Feed")
                 }
             SearchView()
+                .environmentObject(userVM)
+                .environmentObject(tasksVM)
                 .tabItem {
                     Image(systemName: "magnifyingglass")
                     Text("Search")
