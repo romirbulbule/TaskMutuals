@@ -36,11 +36,14 @@ struct ChatView: View {
                             }
                             .listRowBackground(Theme.background)
                             .listRowSeparator(.hidden)
-                            .simultaneousGesture(TapGesture().onEnded {
+                            .onTapGesture {
                                 HapticsManager.shared.medium()
-                            })
+                            }
                         }
                         .listStyle(.plain)
+                        .safeAreaInset(edge: .bottom) {
+                            Color.clear.frame(height: 80)
+                        }
                     }
                 }
             }
@@ -92,7 +95,8 @@ struct ChatRowView: View {
     let chat: Chat
     let currentUserId: String
     @ObservedObject var userVM: UserViewModel
-    @State private var otherUserProfile: UserProfile?
+    @State private var otherUserName: String = "Loading..."
+    @State private var otherUsername: String = ""
 
     var body: some View {
         HStack(spacing: 12) {
@@ -101,21 +105,16 @@ struct ChatRowView: View {
                 .fill(Theme.accent.opacity(0.2))
                 .frame(width: 50, height: 50)
                 .overlay(
-                    Image(systemName: "person.fill")
+                    Text(otherUsername.prefix(1).uppercased())
+                        .font(.headline)
                         .foregroundColor(Theme.accent)
                 )
 
             VStack(alignment: .leading, spacing: 4) {
                 // Show other participant's name
-                if let otherUser = otherUserProfile {
-                    Text("\(otherUser.firstName) \(otherUser.lastName)")
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                } else {
-                    Text("Loading...")
-                        .font(.headline)
-                        .foregroundColor(.secondary)
-                }
+                Text(otherUserName)
+                    .font(.headline)
+                    .foregroundColor(.primary)
 
                 // Last message preview
                 Text(chat.lastMessage.isEmpty ? "No messages yet" : chat.lastMessage)
@@ -146,15 +145,38 @@ struct ChatRowView: View {
         // Get the other participant's ID
         let otherUserId = chat.participants.first(where: { $0 != currentUserId }) ?? ""
 
-        guard !otherUserId.isEmpty else { return }
+        guard !otherUserId.isEmpty else {
+            otherUserName = "Unknown User"
+            return
+        }
 
         let db = Firestore.firestore()
         db.collection("users").document(otherUserId).getDocument { snapshot, error in
-            if let data = snapshot?.data(),
-               let profile = try? Firestore.Decoder().decode(UserProfile.self, from: data) {
+            if let error = error {
+                print("❌ Error fetching user profile: \(error)")
                 DispatchQueue.main.async {
-                    self.otherUserProfile = profile
+                    self.otherUserName = "Error loading"
                 }
+                return
+            }
+
+            guard let data = snapshot?.data() else {
+                print("❌ No data for user: \(otherUserId)")
+                DispatchQueue.main.async {
+                    self.otherUserName = "User not found"
+                }
+                return
+            }
+
+            // Extract fields manually to avoid decoding issues
+            let firstName = data["firstName"] as? String ?? ""
+            let lastName = data["lastName"] as? String ?? ""
+            let username = data["username"] as? String ?? ""
+
+            DispatchQueue.main.async {
+                self.otherUserName = "\(firstName) \(lastName)"
+                self.otherUsername = username
+                print("✅ Loaded chat user: \(self.otherUserName)")
             }
         }
     }

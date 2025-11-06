@@ -112,7 +112,12 @@ struct TaskCardView: View {
                 .fill(Color(UIColor.secondarySystemBackground))
         )
         .shadow(color: Color.black.opacity(0.07), radius: 7, x: 0, y: 2)
-        .contextMenu { contextMenuButtons }
+        .contextMenu {
+            // Only show context menu for service seekers (task creators)
+            if task.creatorUserId == currentUserId && currentUserType == .lookingForServices {
+                contextMenuButtons
+            }
+        }
     }
 
     var statusColor: Color {

@@ -164,7 +164,7 @@ struct EditProfileView: View {
                         .background(Color.accentColor)
                         .cornerRadius(16)
                 }
-                .padding(.bottom, 12)
+                .padding(.bottom, 90)
                 .buttonStyle(PlainButtonStyle())
             }
             .padding(.horizontal, 22)
@@ -192,7 +192,7 @@ struct EditProfileView: View {
         .onAppear {
             if let profile = userVM.profile {
                 name = profile.firstName + " " + profile.lastName
-                username = profile.username ?? ""
+                username = profile.username
                 bio = profile.bio ?? ""
             }
         }

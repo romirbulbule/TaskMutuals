@@ -8,6 +8,33 @@
 import SwiftUI
 import FirebaseAuth
 
+// ViewModifier to hide tab bar
+extension View {
+    func hideTabBar() -> some View {
+        self.modifier(HideTabBarModifier())
+    }
+}
+
+struct HideTabBarModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .onAppear {
+                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+                    if let tabBarController = windowScene.windows.first?.rootViewController as? UITabBarController {
+                        tabBarController.tabBar.isHidden = true
+                    }
+                }
+            }
+            .onDisappear {
+                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+                    if let tabBarController = windowScene.windows.first?.rootViewController as? UITabBarController {
+                        tabBarController.tabBar.isHidden = false
+                    }
+                }
+            }
+    }
+}
+
 struct ConversationView: View {
     let chat: Chat
     @StateObject private var messagesVM: MessagesViewModel
@@ -20,48 +47,48 @@ struct ConversationView: View {
     }
 
     var body: some View {
-        ZStack {
-            Theme.background.ignoresSafeArea()
-            VStack(spacing: 0) {
-                ScrollViewReader { scrollProxy in
-                    List {
-                        ForEach(messagesVM.messages, id: \.id) { msg in
-                            MessageBubble(msg: msg, isCurrentUser: msg.senderId == userId)
-                                .id(msg.id)
-                        }
-                    }
-                    .listStyle(.plain)
-                    .background(Theme.background)
-                    .onChange(of: messagesVM.messages.count) { _ in
-                        if let last = messagesVM.messages.last {
-                            withAnimation { scrollProxy.scrollTo(last.id, anchor: .bottom) }
-                        }
+        VStack(spacing: 0) {
+            ScrollViewReader { scrollProxy in
+                List {
+                    ForEach(messagesVM.messages, id: \.id) { msg in
+                        MessageBubble(msg: msg, isCurrentUser: msg.senderId == userId)
+                            .id(msg.id)
                     }
                 }
+                .listStyle(.plain)
                 .background(Theme.background)
-                HStack(spacing: 10) {
-                    TextField("Message...", text: $messageText)
-                        .padding(12)
-                        .background(Color(.systemGray5))
-                        .cornerRadius(14)
-                    Button(action: {
-                        if !messageText.isEmpty {
-                            HapticsManager.shared.medium()
-                            messagesVM.send(text: messageText, senderId: userId)
-                            messageText = ""
-                        }
-                    }) {
-                        Image(systemName: "paperplane.fill")
-                            .font(.title2)
-                            .foregroundColor(Theme.accent)
+                .onChange(of: messagesVM.messages.count) { _ in
+                    if let last = messagesVM.messages.last {
+                        withAnimation { scrollProxy.scrollTo(last.id, anchor: .bottom) }
                     }
-                    .padding(.horizontal, 2)
                 }
-                .padding()
-                .background(Theme.background)
             }
+
+            HStack(spacing: 10) {
+                TextField("Message...", text: $messageText)
+                    .padding(12)
+                    .background(Color(.systemGray5))
+                    .cornerRadius(14)
+                Button(action: {
+                    if !messageText.isEmpty {
+                        HapticsManager.shared.medium()
+                        messagesVM.send(text: messageText, senderId: userId)
+                        messageText = ""
+                    }
+                }) {
+                    Image(systemName: "paperplane.fill")
+                        .font(.title2)
+                        .foregroundColor(Theme.accent)
+                }
+                .padding(.horizontal, 2)
+            }
+            .padding()
+            .background(Theme.background)
         }
+        .background(Theme.background.ignoresSafeArea())
         .navigationTitle("Chat")
+        .navigationBarTitleDisplayMode(.inline)
+        .hideTabBar()
     }
 }
 
