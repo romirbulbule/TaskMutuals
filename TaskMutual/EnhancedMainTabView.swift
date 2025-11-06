@@ -129,8 +129,8 @@ struct EnhancedMainTabView: View {
     private func selectTab(_ tab: Tab) {
         guard selectedTab != tab else { return }
 
-        // Haptic feedback
-        HapticsManager.shared.selectionChanged()
+        // Strong haptic feedback for tab switches
+        HapticsManager.shared.heavy()
 
         // Update tabs with animation
         withAnimation(AnimationPresets.tabSwitch) {

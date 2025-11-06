@@ -16,6 +16,13 @@ struct RootSwitcherView: View {
     @State private var hasShownSplash = false
     @State private var emailJustVerified = false
     @State private var minLoadingTimeReached = false
+    @State private var hasCompletedOnboarding = false
+
+    // Check if current user has completed onboarding (per-user flag)
+    private func hasUserCompletedOnboarding() -> Bool {
+        guard let userId = userVM.profile?.id else { return false }
+        return UserDefaults.standard.bool(forKey: "hasCompletedOnboarding_\(userId)")
+    }
 
     var body: some View {
         ZStack {
@@ -80,9 +87,15 @@ struct RootSwitcherView: View {
                     }
                 )
             }
+            // Onboarding tutorial (first time only, per user)
+            else if !hasCompletedOnboarding && !hasUserCompletedOnboarding() {
+                OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding, userId: userVM.profile?.id ?? "")
+                    .transition(.opacity)
+            }
             // Main app only if logged in, profile loaded, and user type selected
             else {
-                MainTabView()
+                EnhancedMainTabView()
+                    .transition(.opacity)
             }
         }
         .onAppear {
@@ -112,6 +125,13 @@ struct RootSwitcherView: View {
                 emailJustVerified = false
                 waitingForVerification = false
                 userVM.clearProfile()
+                hasCompletedOnboarding = false
+            }
+        }
+        .onChange(of: userVM.profile?.id) { userId in
+            // Reset onboarding flag when user changes
+            if userId != nil {
+                hasCompletedOnboarding = hasUserCompletedOnboarding()
             }
         }
     }

@@ -46,6 +46,7 @@ struct ConversationView: View {
                         .cornerRadius(14)
                     Button(action: {
                         if !messageText.isEmpty {
+                            HapticsManager.shared.medium()
                             messagesVM.send(text: messageText, senderId: userId)
                             messageText = ""
                         }

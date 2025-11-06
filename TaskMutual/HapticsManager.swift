@@ -12,143 +12,203 @@ import SwiftUI
 class HapticsManager {
     static let shared = HapticsManager()
 
-    private init() {}
+    // Pre-initialized generators for better performance
+    private let lightGenerator = UIImpactFeedbackGenerator(style: .light)
+    private let mediumGenerator = UIImpactFeedbackGenerator(style: .medium)
+    private let heavyGenerator = UIImpactFeedbackGenerator(style: .heavy)
+    private let selectionGenerator = UISelectionFeedbackGenerator()
+    private let notificationGenerator = UINotificationFeedbackGenerator()
+
+    @available(iOS 13.0, *)
+    private lazy var softGenerator = UIImpactFeedbackGenerator(style: .soft)
+
+    @available(iOS 13.0, *)
+    private lazy var rigidGenerator = UIImpactFeedbackGenerator(style: .rigid)
+
+    // Check if device supports haptics
+    private var isHapticsSupported: Bool {
+        return UIDevice.current.userInterfaceIdiom == .phone
+    }
+
+    private init() {
+        // Prepare all generators on initialization
+        lightGenerator.prepare()
+        mediumGenerator.prepare()
+        heavyGenerator.prepare()
+        selectionGenerator.prepare()
+        notificationGenerator.prepare()
+    }
 
     // MARK: - Impact Feedback
 
-    /// Light impact - for subtle interactions (like selecting a tab)
+    /// Light impact - now using medium for more noticeable feedback
     func light() {
-        let generator = UIImpactFeedbackGenerator(style: .light)
-        generator.impactOccurred()
+        guard isHapticsSupported else { return }
+        mediumGenerator.impactOccurred()
+        mediumGenerator.prepare()
     }
 
-    /// Medium impact - for standard interactions (like tapping a button)
+    /// Medium impact - now using heavy for more noticeable feedback
     func medium() {
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
+        guard isHapticsSupported else { return }
+        heavyGenerator.impactOccurred()
+        heavyGenerator.prepare()
     }
 
-    /// Heavy impact - for important interactions (like completing a task)
+    /// Heavy impact - triple heavy for maximum feedback
     func heavy() {
-        let generator = UIImpactFeedbackGenerator(style: .heavy)
-        generator.impactOccurred()
+        guard isHapticsSupported else { return }
+        heavyGenerator.impactOccurred()
+        heavyGenerator.prepare()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            self.heavyGenerator.impactOccurred()
+            self.heavyGenerator.prepare()
+        }
     }
 
-    /// Soft impact - gentle feedback (iOS 13+)
+    /// Soft impact - now using medium for more noticeable feedback (iOS 13+)
     @available(iOS 13.0, *)
     func soft() {
-        let generator = UIImpactFeedbackGenerator(style: .soft)
-        generator.impactOccurred()
+        guard isHapticsSupported else { return }
+        mediumGenerator.impactOccurred()
+        mediumGenerator.prepare()
     }
 
-    /// Rigid impact - firm feedback (iOS 13+)
+    /// Rigid impact - now using heavy for more noticeable feedback (iOS 13+)
     @available(iOS 13.0, *)
     func rigid() {
-        let generator = UIImpactFeedbackGenerator(style: .rigid)
-        generator.impactOccurred()
+        guard isHapticsSupported else { return }
+        heavyGenerator.impactOccurred()
+        heavyGenerator.prepare()
+    }
+
+    // MARK: - Test Haptics
+
+    /// Test function to verify haptics are working - fires a strong sequence
+    func testHaptics() {
+        print("🔔 Testing Haptics - Device: \(isHapticsSupported ? "iPhone with Taptic Engine" : "Not Supported")")
+        guard isHapticsSupported else {
+            print("❌ Haptics not supported on this device")
+            return
+        }
+
+        // Fire a strong sequence
+        heavy()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            self.success()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            self.heavy()
+        }
+        print("✅ Haptics test fired!")
     }
 
     // MARK: - Notification Feedback
 
     /// Success notification - for successful actions
     func success() {
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.success)
+        guard isHapticsSupported else { return }
+        notificationGenerator.notificationOccurred(.success)
+        notificationGenerator.prepare()
     }
 
     /// Warning notification - for warning actions
     func warning() {
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.warning)
+        guard isHapticsSupported else { return }
+        notificationGenerator.notificationOccurred(.warning)
+        notificationGenerator.prepare()
     }
 
     /// Error notification - for error states
     func error() {
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.error)
+        guard isHapticsSupported else { return }
+        notificationGenerator.notificationOccurred(.error)
+        notificationGenerator.prepare()
     }
 
     // MARK: - Selection Feedback
 
     /// Selection changed - for picker-style interactions
     func selectionChanged() {
-        let generator = UISelectionFeedbackGenerator()
-        generator.selectionChanged()
+        guard isHapticsSupported else { return }
+        selectionGenerator.selectionChanged()
+        selectionGenerator.prepare()
     }
 
-    // MARK: - Common Patterns (Opal-style)
+    // MARK: - Common Patterns (More Aggressive for Better Feedback)
 
-    /// Button press - medium impact with slight delay for realism
+    /// Button press - heavy impact for noticeable feedback
     func buttonPress() {
+        heavy()
+    }
+
+    /// Toggle switch - medium impact (more aggressive)
+    func toggle() {
         medium()
     }
 
-    /// Toggle switch - soft impact
-    func toggle() {
-        if #available(iOS 13.0, *) {
-            soft()
-        } else {
-            light()
-        }
-    }
-
-    /// Swipe action - light impact
+    /// Swipe action - medium impact (more aggressive)
     func swipe() {
-        light()
+        medium()
     }
 
-    /// Pull to refresh - light impact
+    /// Pull to refresh - medium impact (more aggressive)
     func pullToRefresh() {
-        light()
+        medium()
     }
 
-    /// Delete/destructive action - heavy impact + error notification
+    /// Delete/destructive action - strong triple pattern
     func destructive() {
         heavy()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            self.heavy()
+        }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             self.error()
         }
     }
 
-    /// Task completed - success pattern
+    /// Task completed - strong success pattern
     func taskCompleted() {
-        medium()
+        heavy()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            self.heavy()
+        }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             self.success()
         }
     }
 
-    /// Payment successful - celebration pattern
+    /// Payment successful - strong celebration pattern
     func paymentSuccess() {
         heavy()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            self.heavy()
+        }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             self.success()
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            self.light()
+            self.heavy()
         }
     }
 
-    /// Card flip/transition - medium + light sequence
+    /// Card flip/transition - strong double pattern
     func cardFlip() {
-        medium()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            self.light()
+        heavy()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.medium()
         }
     }
 
-    /// Modal appear - soft impact
+    /// Modal appear - medium impact (more aggressive)
     func modalAppear() {
-        if #available(iOS 13.0, *) {
-            soft()
-        } else {
-            light()
-        }
+        medium()
     }
 
-    /// Modal dismiss - light impact
+    /// Modal dismiss - medium impact (more aggressive)
     func modalDismiss() {
-        light()
+        medium()
     }
 }
 

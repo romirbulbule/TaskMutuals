@@ -11,6 +11,7 @@ import FirebaseFirestore
 
 struct TaskDetailView: View {
     @EnvironmentObject var userVM: UserViewModel
+    @EnvironmentObject var tasksVM: TasksViewModel
     var task: Task
     @State private var showAcceptAlert = false
     @State private var selectedResponse: Response?
@@ -21,6 +22,10 @@ struct TaskDetailView: View {
     @State private var showRatingSheet = false
     @State private var hasRatedProvider = false
     @State private var showDisputeSheet = false
+    @State private var showSubmitProposalSheet = false
+    @State private var showEditTaskSheet = false
+    @State private var showDeleteTaskAlert = false
+    @Environment(\.dismiss) var dismiss
 
     var isTaskCreator: Bool {
         task.creatorUserId == Auth.auth().currentUser?.uid
@@ -239,6 +244,73 @@ struct TaskDetailView: View {
                         )
                     }
                 }
+
+                // Submit Proposal Button (for service providers who haven't responded yet)
+                if !isTaskCreator && task.status == .open && !hasUserResponded() {
+                    Button(action: {
+                        HapticsManager.shared.heavy()
+                        showSubmitProposalSheet = true
+                    }) {
+                        HStack {
+                            Image(systemName: "hand.raised.fill")
+                            Text("Submit Proposal")
+                                .fontWeight(.bold)
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(
+                            LinearGradient(
+                                colors: [Theme.accent, Theme.accent.opacity(0.8)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .cornerRadius(12)
+                        .shadow(color: Theme.accent.opacity(0.3), radius: 8, x: 0, y: 4)
+                    }
+                    .padding(.top, 12)
+                }
+
+                // Edit/Delete Task Buttons (for task creator)
+                if isTaskCreator && task.status == .open {
+                    HStack(spacing: 12) {
+                        Button(action: {
+                            HapticsManager.shared.medium()
+                            showEditTaskSheet = true
+                        }) {
+                            HStack {
+                                Image(systemName: "pencil")
+                                Text("Edit")
+                            }
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color.blue)
+                            .cornerRadius(10)
+                        }
+
+                        Button(action: {
+                            HapticsManager.shared.medium()
+                            showDeleteTaskAlert = true
+                        }) {
+                            HStack {
+                                Image(systemName: "trash")
+                                Text("Delete")
+                            }
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color.red)
+                            .cornerRadius(10)
+                        }
+                    }
+                    .padding(.top, 12)
+                }
             }
             .padding()
             .background(Color(UIColor.systemBackground))
@@ -325,6 +397,38 @@ struct TaskDetailView: View {
         } message: {
             Text("This will mark the task as completed. You can then proceed to pay the provider.")
         }
+        .sheet(isPresented: $showSubmitProposalSheet) {
+            ResponseView(post: task) { sentMessage, quotedPrice in
+                tasksVM.addResponse(to: task, message: sentMessage, quotedPrice: quotedPrice) { success in
+                    if success {
+                        showSubmitProposalSheet = false
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showEditTaskSheet) {
+            EditTaskView(post: task) { updatedTitle, updatedDescription in
+                tasksVM.updateTask(task, title: updatedTitle, description: updatedDescription)
+                showEditTaskSheet = false
+            }
+        }
+        .alert("Delete Task?", isPresented: $showDeleteTaskAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) {
+                deleteTask()
+            }
+        } message: {
+            Text("This will permanently delete your task and all responses. This action cannot be undone.")
+        }
+    }
+
+    func hasUserResponded() -> Bool {
+        return task.responses.contains(where: { $0.fromUserId == currentUserId })
+    }
+
+    func deleteTask() {
+        tasksVM.removeTask(task)
+        dismiss()
     }
 
     var statusColor: Color {

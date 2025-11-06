@@ -23,7 +23,7 @@ struct EnhancedTaskCardView: View {
 
     var body: some View {
         Button(action: {
-            HapticsManager.shared.light()
+            HapticsManager.shared.heavy()
             onTap?()
         }) {
             cardContent

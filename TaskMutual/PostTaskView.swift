@@ -98,12 +98,21 @@ struct PostTaskView: View {
                         Text("Description *")
                             .foregroundColor(Color.white)
                             .font(.caption)
-                        TextEditor(text: $description)
-                            .frame(height: 100)
-                            .padding(8)
-                            .background(Color.white)
-                            .cornerRadius(10)
-                            .foregroundColor(.black)
+                        ZStack(alignment: .topLeading) {
+                            if description.isEmpty {
+                                Text("Describe what needs to be done, any specific requirements, and when you need it completed...")
+                                    .foregroundColor(.gray.opacity(0.6))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 16)
+                            }
+                            TextEditor(text: $description)
+                                .frame(height: 120)
+                                .padding(4)
+                                .scrollContentBackground(.hidden)
+                        }
+                        .background(Color.white)
+                        .cornerRadius(10)
+                        .foregroundColor(.black)
                     }
 
                     // Estimated Duration
