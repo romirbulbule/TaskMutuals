@@ -32,6 +32,47 @@ struct FeedView: View {
         userVM.profile?.userType != nil
     }
 
+    private var taskListView: some View {
+        ScrollView {
+            LazyVStack(spacing: 16) {
+                ForEach(tasksVM.tasks) { task in
+                    NavigationLink(destination: TaskDetailView(task: task)
+                        .environmentObject(userVM)
+                        .environmentObject(tasksVM)
+                    ) {
+                        TaskCardView(
+                            task: task,
+                            currentUserId: Auth.auth().currentUser?.uid ?? "",
+                            currentUserType: userVM.profile?.userType,
+                            onEdit: {
+                                modalManager.showEdit(for: task)
+                            },
+                            onDelete: {
+                                tasksVM.removeTask(task)
+                            },
+                            onReport: {
+                                // TODO: Implement report
+                            },
+                            onRespond: {
+                                modalManager.showResponse(for: task)
+                            }
+                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .simultaneousGesture(TapGesture().onEnded {
+                        HapticsManager.shared.heavy()
+                    })
+                    .padding(.horizontal)
+                }
+            }
+            .padding(.vertical, 8)
+        }
+        .refreshable {
+            HapticsManager.shared.light()
+            tasksVM.fetchTasks()
+        }
+    }
+
     var body: some View {
         NavigationView {
             ZStack {
@@ -63,30 +104,7 @@ struct FeedView: View {
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    ScrollView {
-                        LazyVStack(spacing: 16) {
-                            ForEach(Array(tasksVM.tasks.enumerated()), id: \.offset) { index, task in
-                                NavigationLink(destination: TaskDetailView(task: task)
-                                    .environmentObject(userVM)
-                                    .environmentObject(tasksVM)
-                                ) {
-                                    EnhancedTaskCardView(
-                                        task: task,
-                                        index: index
-                                    ) {
-                                        // Handle tap
-                                    }
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                                .padding(.horizontal)
-                            }
-                        }
-                        .padding(.vertical, 8)
-                    }
-                    .refreshable {
-                        HapticsManager.shared.light()
-                        tasksVM.fetchTasks()
-                    }
+                    taskListView
                 }
             }
             .navigationTitle(canPostTasks ? "Your Tasks" : "Available Tasks")

@@ -455,6 +455,8 @@ struct TaskDetailView: View {
         guard let taskId = task.id else { return }
         let db = Firestore.firestore()
 
+        HapticsManager.shared.paymentSuccess()
+
         let encoded = encodedResponsesWithAccepted(response.id)
 
         db.collection("tasks").document(taskId).updateData([
@@ -467,6 +469,10 @@ struct TaskDetailView: View {
                 print("❌ Error accepting response: \(error)")
             } else {
                 print("✅ Response accepted successfully")
+                // Dismiss after successful acceptance
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    dismiss()
+                }
             }
         }
     }
