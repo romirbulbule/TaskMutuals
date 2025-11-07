@@ -33,7 +33,7 @@ struct FeedView: View {
     }
 
     private var taskListView: some View {
-        ScrollView {
+        ScrollViewWithTabBar {
             LazyVStack(spacing: 16) {
                 ForEach(tasksVM.tasks) { task in
                     NavigationLink(destination: TaskDetailView(task: task)
@@ -66,10 +66,7 @@ struct FeedView: View {
                 }
             }
             .padding(.vertical, 8)
-        }
-        .refreshable {
-            HapticsManager.shared.light()
-            tasksVM.fetchTasks()
+            .padding(.bottom, 80)
         }
     }
 

@@ -22,27 +22,39 @@ struct ChatView: View {
                 VStack(spacing: 0) {
                     if chatVM.chats.isEmpty {
                         Spacer()
-                        Text("No chats yet")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
+                        VStack(spacing: 12) {
+                            Image(systemName: "bubble.left.and.bubble.right")
+                                .font(.system(size: 64))
+                                .foregroundColor(.secondary.opacity(0.5))
+                            Text("No Messages")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.primary)
+                            Text("Start a conversation with someone")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
                         Spacer()
                     } else {
-                        List(chatVM.chats) { chat in
-                            NavigationLink(
-                                destination: ConversationView(chat: chat)
-                                    .environmentObject(userVM)
-                            ) {
-                                ChatRowView(chat: chat, currentUserId: Auth.auth().currentUser?.uid ?? "", userVM: userVM)
+                        ScrollViewWithTabBar {
+                            LazyVStack(spacing: 0) {
+                                ForEach(chatVM.chats) { chat in
+                                    NavigationLink(
+                                        destination: ConversationView(chat: chat)
+                                            .environmentObject(userVM)
+                                    ) {
+                                        ChatRowView(chat: chat, currentUserId: Auth.auth().currentUser?.uid ?? "", userVM: userVM)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                    .onTapGesture {
+                                        HapticsManager.shared.medium()
+                                    }
+
+                                    Divider()
+                                        .padding(.leading, 84)
+                                }
                             }
-                            .listRowBackground(Theme.background)
-                            .listRowSeparator(.hidden)
-                            .onTapGesture {
-                                HapticsManager.shared.medium()
-                            }
-                        }
-                        .listStyle(.plain)
-                        .safeAreaInset(edge: .bottom) {
-                            Color.clear.frame(height: 80)
+                            .padding(.bottom, 80)
                         }
                     }
                 }
@@ -90,52 +102,88 @@ struct ChatView: View {
     }
 }
 
-// Chat Row View that shows the other participant's name
+// Chat Row View that shows the other participant's name - Instagram style
 struct ChatRowView: View {
     let chat: Chat
     let currentUserId: String
     @ObservedObject var userVM: UserViewModel
     @State private var otherUserName: String = "Loading..."
     @State private var otherUsername: String = ""
+    @State private var profileImageURL: String?
 
     var body: some View {
         HStack(spacing: 12) {
-            // Profile picture placeholder
-            Circle()
-                .fill(Theme.accent.opacity(0.2))
-                .frame(width: 50, height: 50)
-                .overlay(
-                    Text(otherUsername.prefix(1).uppercased())
-                        .font(.headline)
-                        .foregroundColor(Theme.accent)
-                )
+            // Profile picture - circular with image or initials
+            if let urlString = profileImageURL, let url = URL(string: urlString) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 56, height: 56)
+                            .clipShape(Circle())
+                    default:
+                        Circle()
+                            .fill(LinearGradient(
+                                colors: [Theme.accent.opacity(0.6), Theme.accent.opacity(0.3)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ))
+                            .frame(width: 56, height: 56)
+                            .overlay(
+                                Text(otherUsername.prefix(1).uppercased())
+                                    .font(.title3)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.white)
+                            )
+                    }
+                }
+            } else {
+                Circle()
+                    .fill(LinearGradient(
+                        colors: [Theme.accent.opacity(0.6), Theme.accent.opacity(0.3)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ))
+                    .frame(width: 56, height: 56)
+                    .overlay(
+                        Text(otherUsername.prefix(1).uppercased())
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                    )
+            }
 
-            VStack(alignment: .leading, spacing: 4) {
-                // Show other participant's name
+            VStack(alignment: .leading, spacing: 3) {
+                // Name in bold
                 Text(otherUserName)
-                    .font(.headline)
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.primary)
 
                 // Last message preview
-                Text(chat.lastMessage.isEmpty ? "No messages yet" : chat.lastMessage)
-                    .font(.subheadline)
+                Text(chat.lastMessage.isEmpty ? "Tap to start chatting" : chat.lastMessage)
+                    .font(.system(size: 14))
                     .foregroundColor(.secondary)
-                    .lineLimit(1)
+                    .lineLimit(2)
             }
 
             Spacer()
 
-            // Timestamp
-            Text(chat.lastUpdated, style: .relative)
-                .font(.caption)
-                .foregroundColor(.secondary)
+            // Timestamp and chevron
+            VStack(alignment: .trailing, spacing: 4) {
+                Text(chat.lastUpdated, style: .relative)
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.secondary.opacity(0.3))
+            }
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemGray6))
-        )
+        .padding(.vertical, 10)
+        .padding(.horizontal, 16)
+        .background(Color(.systemBackground))
         .onAppear {
             fetchOtherUserProfile()
         }
@@ -172,10 +220,12 @@ struct ChatRowView: View {
             let firstName = data["firstName"] as? String ?? ""
             let lastName = data["lastName"] as? String ?? ""
             let username = data["username"] as? String ?? ""
+            let imageURL = data["profileImageURL"] as? String
 
             DispatchQueue.main.async {
                 self.otherUserName = "\(firstName) \(lastName)"
                 self.otherUsername = username
+                self.profileImageURL = imageURL
                 print("✅ Loaded chat user: \(self.otherUserName)")
             }
         }

@@ -420,6 +420,7 @@ struct TaskDetailView: View {
         } message: {
             Text("This will permanently delete your task and all responses. This action cannot be undone.")
         }
+        .hideTabBar()
     }
 
     func hasUserResponded() -> Bool {

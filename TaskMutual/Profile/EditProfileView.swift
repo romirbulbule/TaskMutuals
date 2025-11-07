@@ -198,5 +198,6 @@ struct EditProfileView: View {
         }
         .navigationTitle("Edit Profile")
         .navigationBarTitleDisplayMode(.inline)
+        .hideTabBar()
     }
 }

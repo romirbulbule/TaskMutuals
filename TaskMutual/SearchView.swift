@@ -32,7 +32,7 @@ struct SearchView: View {
             ZStack {
                 Theme.background.ignoresSafeArea()
 
-                ScrollView(.vertical, showsIndicators: true) {
+                ScrollViewWithTabBar {
                     VStack(spacing: 28) {
 
                         // Search bar

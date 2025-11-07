@@ -10,6 +10,7 @@ import SwiftUI
 struct EnhancedMainTabView: View {
     @EnvironmentObject var userVM: UserViewModel
     @EnvironmentObject var tasksVM: TasksViewModel
+    @StateObject private var tabBarVisibility = TabBarVisibility.shared
     @State private var selectedTab: Tab = .feed
     @State private var previousTab: Tab = .feed
     @Namespace private var animation
@@ -94,6 +95,9 @@ struct EnhancedMainTabView: View {
         )
         .padding(.horizontal)
         .padding(.bottom, 8)
+        .offset(y: tabBarVisibility.isHidden ? 100 : 0)
+        .opacity(tabBarVisibility.isHidden ? 0 : 1)
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: tabBarVisibility.isHidden)
     }
 
     private func tabButton(for tab: Tab) -> some View {
@@ -131,6 +135,9 @@ struct EnhancedMainTabView: View {
 
         // Strong haptic feedback for tab switches
         HapticsManager.shared.heavy()
+
+        // Show tab bar when switching tabs
+        TabBarVisibility.shared.show()
 
         // Update tabs with animation
         withAnimation(AnimationPresets.tabSwitch) {
