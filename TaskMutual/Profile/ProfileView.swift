@@ -21,6 +21,7 @@ struct ProfileView: View {
     @State private var deleteErrorMessage = ""
     @State private var showDeleteSuccess = false
     @State private var isDeletingAccount = false
+    @State private var showSubscription = false
 
     var userTypeDisplay: String {
         switch userVM.profile?.userType {
@@ -267,13 +268,18 @@ struct ProfileView: View {
             } message: {
                 Text("Your account was deleted successfully. You have been signed out.")
             }
+            .sheet(isPresented: $showSubscription) {
+                SubscriptionView()
+                    .environmentObject(userVM)
+            }
         }
         .navigationViewStyle(StackNavigationViewStyle())
     }
 
     private var settingsMenu: some View {
         Group {
-            Color.black.opacity(0.5)
+            Rectangle()
+                .fill(Color.black.opacity(0.5))
                 .ignoresSafeArea()
                 .onTapGesture { showMenu = false }
             VStack(spacing: 24) {
@@ -305,6 +311,20 @@ struct ProfileView: View {
                         Text("My Disputes")
                     }
                     .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                }
+
+                Button(action: {
+                    showSubscription = true
+                    showMenu = false
+                }) {
+                    HStack {
+                        let currentTier = userVM.profile?.subscription?.tier ?? .free
+                        let hasPaidTier = currentTier != .free
+                        Image(systemName: hasPaidTier ? "crown.fill" : "star.circle.fill")
+                        Text(hasPaidTier ? "Manage Subscription" : "Upgrade")
+                    }
+                    .foregroundColor((userVM.profile?.subscription?.tier ?? .free) != .free ? Color.yellow : Theme.accent)
                     .frame(maxWidth: .infinity)
                 }
 

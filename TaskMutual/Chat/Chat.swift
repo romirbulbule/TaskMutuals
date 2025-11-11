@@ -13,6 +13,8 @@ struct Chat: Identifiable, Codable {
     var participants: [String]
     var lastMessage: String
     var lastUpdated: Date
+    var lastSenderId: String? // Track who sent the last message
+    var unreadCount: [String: Int]? // Map of userId to unread count
 }
 
 struct Message: Identifiable, Codable {

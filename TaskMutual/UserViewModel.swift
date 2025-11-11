@@ -161,6 +161,35 @@ class UserViewModel: ObservableObject {
             }
         }
     }
+
+    // MARK: - Update Subscription
+    func updateSubscription(_ subscription: SubscriptionInfo, completion: (() -> Void)? = nil) {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            completion?()
+            return
+        }
+
+        do {
+            let subscriptionData = try Firestore.Encoder().encode(subscription)
+            db.collection("users").document(userId).updateData([
+                "subscription": subscriptionData
+            ]) { error in
+                if let error = error {
+                    print("❌ Error updating subscription: \(error.localizedDescription)")
+                } else {
+                    print("✅ Subscription updated successfully")
+                    // Update local copy
+                    DispatchQueue.main.async {
+                        self.profile?.subscription = subscription
+                    }
+                }
+                completion?()
+            }
+        } catch {
+            print("❌ Error encoding subscription: \(error.localizedDescription)")
+            completion?()
+        }
+    }
     
     // MARK: - Fetch User Profile (with debug logs/timing)
     func fetchUserProfile() {

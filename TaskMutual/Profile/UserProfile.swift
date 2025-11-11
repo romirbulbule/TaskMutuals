@@ -28,6 +28,9 @@ struct UserProfile: Identifiable, Codable, Equatable {
     var averageRating: Double?
     var totalRatings: Int?
 
+    // Subscription and payment info
+    var subscription: SubscriptionInfo?
+
     // Custom Equatable implementation (needed for @DocumentID)
     static func == (lhs: UserProfile, rhs: UserProfile) -> Bool {
         return lhs.id == rhs.id &&
@@ -39,7 +42,15 @@ struct UserProfile: Identifiable, Codable, Equatable {
                lhs.profileImageURL == rhs.profileImageURL &&
                lhs.userType == rhs.userType &&
                lhs.averageRating == rhs.averageRating &&
-               lhs.totalRatings == rhs.totalRatings
+               lhs.totalRatings == rhs.totalRatings &&
+               lhs.subscription?.tier == rhs.subscription?.tier
+    }
+
+    // Helper to get subscription or create default
+    mutating func ensureSubscription() {
+        if subscription == nil {
+            subscription = SubscriptionInfo()
+        }
     }
 
     var ratingDisplay: String? {

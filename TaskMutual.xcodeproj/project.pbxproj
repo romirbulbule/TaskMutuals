@@ -13,6 +13,10 @@
 		072FE9AE2E824F8E00AB86E2 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 072FE9AD2E824F8E00AB86E2 /* FirebaseAuth */; };
 		072FE9B22E82509900AB86E2 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 072FE9B12E82509900AB86E2 /* FirebaseAnalytics */; };
 		072FE9B42E82509900AB86E2 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 072FE9B32E82509900AB86E2 /* FirebaseAuth */; };
+		074964F02EC025470096CC9C /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 074964EF2EC025460096CC9C /* StoreKit.framework */; };
+		074BB3862EBF060200619550 /* ReceiptParser in Frameworks */ = {isa = PBXBuildFile; productRef = 074BB3852EBF060200619550 /* ReceiptParser */; };
+		074BB3882EBF060200619550 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 074BB3872EBF060200619550 /* RevenueCat */; };
+		074BB38A2EBF060200619550 /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = 074BB3892EBF060200619550 /* RevenueCatUI */; };
 		07B99C422EAF5B1C004C710B /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 07B99C412EAF5B1C004C710B /* FirebaseStorage */; };
 		07B99C452EB0059E004C710B /* TOCropViewController in Frameworks */ = {isa = PBXBuildFile; productRef = 07B99C442EB0059E004C710B /* TOCropViewController */; };
 		07B99C492EB00A49004C710B /* CropViewController in Frameworks */ = {isa = PBXBuildFile; productRef = 07B99C482EB00A49004C710B /* CropViewController */; };
@@ -40,6 +44,7 @@
 		072FE9732E82461200AB86E2 /* TaskMutual.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TaskMutual.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		072FE9842E82461500AB86E2 /* TaskMutualTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TaskMutualTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		072FE98E2E82461500AB86E2 /* TaskMutualUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TaskMutualUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		074964EF2EC025460096CC9C /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -81,9 +86,13 @@
 				072FE9A82E824ADF00AB86E2 /* FirebaseAnalytics in Frameworks */,
 				07B99C452EB0059E004C710B /* TOCropViewController in Frameworks */,
 				07B99C422EAF5B1C004C710B /* FirebaseStorage in Frameworks */,
+				074BB3862EBF060200619550 /* ReceiptParser in Frameworks */,
+				074BB3882EBF060200619550 /* RevenueCat in Frameworks */,
+				074BB38A2EBF060200619550 /* RevenueCatUI in Frameworks */,
 				072FE9AA2E824ADF00AB86E2 /* FirebaseAuth in Frameworks */,
 				07BA2F3E2E8D143B003B4B9F /* FirebaseFirestore in Frameworks */,
 				07B99C492EB00A49004C710B /* CropViewController in Frameworks */,
+				074964F02EC025470096CC9C /* StoreKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -114,6 +123,7 @@
 				072FE9752E82461200AB86E2 /* TaskMutual */,
 				072FE9872E82461500AB86E2 /* TaskMutualTests */,
 				072FE9912E82461500AB86E2 /* TaskMutualUITests */,
+				074964EE2EC025460096CC9C /* Frameworks */,
 				072FE9742E82461200AB86E2 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -126,6 +136,14 @@
 				072FE98E2E82461500AB86E2 /* TaskMutualUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		074964EE2EC025460096CC9C /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				074964EF2EC025460096CC9C /* StoreKit.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -154,6 +172,9 @@
 				07B99C412EAF5B1C004C710B /* FirebaseStorage */,
 				07B99C442EB0059E004C710B /* TOCropViewController */,
 				07B99C482EB00A49004C710B /* CropViewController */,
+				074BB3852EBF060200619550 /* ReceiptParser */,
+				074BB3872EBF060200619550 /* RevenueCat */,
+				074BB3892EBF060200619550 /* RevenueCatUI */,
 			);
 			productName = TaskMutual;
 			productReference = 072FE9732E82461200AB86E2 /* TaskMutual.app */;
@@ -244,6 +265,7 @@
 			packageReferences = (
 				072FE9A62E824ADF00AB86E2 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				07B99C432EB0059E004C710B /* XCRemoteSwiftPackageReference "TOCropViewController" */,
+				074BB3842EBF060200619550 /* XCRemoteSwiftPackageReference "purchases-ios" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 072FE9742E82461200AB86E2 /* Products */;
@@ -622,6 +644,14 @@
 				minimumVersion = 12.3.0;
 			};
 		};
+		074BB3842EBF060200619550 /* XCRemoteSwiftPackageReference "purchases-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/RevenueCat/purchases-ios.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.47.0;
+			};
+		};
 		07B99C432EB0059E004C710B /* XCRemoteSwiftPackageReference "TOCropViewController" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/TimOliver/TOCropViewController";
@@ -662,6 +692,21 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 072FE9A62E824ADF00AB86E2 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAuth;
+		};
+		074BB3852EBF060200619550 /* ReceiptParser */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 074BB3842EBF060200619550 /* XCRemoteSwiftPackageReference "purchases-ios" */;
+			productName = ReceiptParser;
+		};
+		074BB3872EBF060200619550 /* RevenueCat */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 074BB3842EBF060200619550 /* XCRemoteSwiftPackageReference "purchases-ios" */;
+			productName = RevenueCat;
+		};
+		074BB3892EBF060200619550 /* RevenueCatUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 074BB3842EBF060200619550 /* XCRemoteSwiftPackageReference "purchases-ios" */;
+			productName = RevenueCatUI;
 		};
 		07B99C412EAF5B1C004C710B /* FirebaseStorage */ = {
 			isa = XCSwiftPackageProductDependency;

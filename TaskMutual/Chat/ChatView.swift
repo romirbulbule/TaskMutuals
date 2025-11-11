@@ -11,61 +11,103 @@ import FirebaseAuth
 import FirebaseFirestore
 
 struct ChatView: View {
-    @StateObject private var chatVM = ChatViewModel(userId: Auth.auth().currentUser?.uid ?? "")
+    @EnvironmentObject var chatVM: ChatViewModel
     @EnvironmentObject var userVM: UserViewModel
     @State private var showUserSearch = false
+    @State private var searchText = ""
 
     var body: some View {
         NavigationView {
-            ZStack {
-                Theme.background.ignoresSafeArea()
-                VStack(spacing: 0) {
-                    if chatVM.chats.isEmpty {
-                        Spacer()
-                        VStack(spacing: 12) {
-                            Image(systemName: "bubble.left.and.bubble.right")
-                                .font(.system(size: 64))
-                                .foregroundColor(.secondary.opacity(0.5))
-                            Text("No Messages")
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.primary)
-                            Text("Start a conversation with someone")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                        Spacer()
-                    } else {
-                        ScrollViewWithTabBar {
-                            LazyVStack(spacing: 0) {
-                                ForEach(chatVM.chats) { chat in
-                                    NavigationLink(
-                                        destination: ConversationView(chat: chat)
-                                            .environmentObject(userVM)
-                                    ) {
-                                        ChatRowView(chat: chat, currentUserId: Auth.auth().currentUser?.uid ?? "", userVM: userVM)
-                                    }
-                                    .buttonStyle(PlainButtonStyle())
-                                    .onTapGesture {
-                                        HapticsManager.shared.medium()
-                                    }
+            VStack(spacing: 0) {
+                // Search bar
+                HStack(spacing: 8) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundColor(.secondary)
+                            .font(.system(size: 16))
 
-                                    Divider()
-                                        .padding(.leading, 84)
+                        TextField("Search", text: $searchText)
+                            .font(.system(size: 17))
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(10)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color(.systemBackground))
+
+                // Messages header with Requests
+                HStack {
+                    HStack(spacing: 8) {
+                        Text("Messages")
+                            .font(.system(size: 22, weight: .bold))
+
+                        Image(systemName: "bell.slash.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(.secondary)
+                    }
+
+                    Spacer()
+
+                    Text("Requests")
+                        .font(.system(size: 16))
+                        .foregroundColor(Theme.accent)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color(.systemBackground))
+
+                if chatVM.chats.isEmpty {
+                    Spacer()
+                    VStack(spacing: 12) {
+                        Image(systemName: "bubble.left.and.bubble.right")
+                            .font(.system(size: 64))
+                            .foregroundColor(.secondary.opacity(0.5))
+                        Text("No Messages")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.primary)
+                        Text("Start a conversation with someone")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                } else {
+                    ScrollViewWithTabBar {
+                        LazyVStack(spacing: 0) {
+                            ForEach(filteredChats) { chat in
+                                NavigationLink(
+                                    destination: ConversationView(chat: chat)
+                                        .environmentObject(userVM)
+                                ) {
+                                    ChatRowView(chat: chat, currentUserId: Auth.auth().currentUser?.uid ?? "", userVM: userVM)
                                 }
+                                .buttonStyle(PlainButtonStyle())
+                                .onTapGesture {
+                                    HapticsManager.shared.medium()
+                                }
+
+                                Divider()
+                                    .padding(.leading, 84)
                             }
-                            .padding(.bottom, 80)
                         }
+                        .padding(.bottom, 80)
                     }
                 }
             }
-            .navigationTitle("Chats")
+            .background(Color(.systemBackground))
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { showUserSearch = true }) {
-                        Image(systemName: "plus")
-                            .font(.title2)
-                            .foregroundColor(Theme.accent)
+                    Button(action: {
+                        HapticsManager.shared.medium()
+                        showUserSearch = true
+                    }) {
+                        Image(systemName: "square.and.pencil")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(.primary)
                     }
                 }
             }
@@ -74,6 +116,17 @@ struct ChatView: View {
                     createOrOpenChat(with: selectedUser)
                 }
             }
+        }
+    }
+
+    var filteredChats: [Chat] {
+        if searchText.isEmpty {
+            return chatVM.chats
+        }
+        return chatVM.chats.filter { chat in
+            // You could filter based on user names here
+            // For now, just return all
+            true
         }
     }
 
@@ -155,31 +208,37 @@ struct ChatRowView: View {
                     )
             }
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 // Name in bold
                 Text(otherUserName)
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.primary)
 
                 // Last message preview
-                Text(chat.lastMessage.isEmpty ? "Tap to start chatting" : chat.lastMessage)
-                    .font(.system(size: 14))
-                    .foregroundColor(.secondary)
-                    .lineLimit(2)
+                HStack(spacing: 4) {
+                    Text(chat.lastMessage.isEmpty ? "Tap to start chatting" : chat.lastMessage)
+                        .font(.system(size: 15))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+
+                    if !chat.lastMessage.isEmpty {
+                        Text("·")
+                            .foregroundColor(.secondary)
+                            .font(.system(size: 15))
+
+                        Text(formatRelativeTime(chat.lastUpdated))
+                            .font(.system(size: 15))
+                            .foregroundColor(.secondary)
+                    }
+                }
             }
 
             Spacer()
 
-            // Timestamp and chevron
-            VStack(alignment: .trailing, spacing: 4) {
-                Text(chat.lastUpdated, style: .relative)
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.secondary.opacity(0.3))
-            }
+            // Camera icon (like Instagram)
+            Image(systemName: "camera")
+                .font(.system(size: 24))
+                .foregroundColor(.secondary.opacity(0.6))
         }
         .padding(.vertical, 10)
         .padding(.horizontal, 16)
@@ -228,6 +287,23 @@ struct ChatRowView: View {
                 self.profileImageURL = imageURL
                 print("✅ Loaded chat user: \(self.otherUserName)")
             }
+        }
+    }
+
+    func formatRelativeTime(_ date: Date) -> String {
+        let now = Date()
+        let seconds = Int(now.timeIntervalSince(date))
+
+        if seconds < 60 {
+            return "\(seconds)s"
+        } else if seconds < 3600 {
+            return "\(seconds / 60)m"
+        } else if seconds < 86400 {
+            return "\(seconds / 3600)h"
+        } else if seconds < 604800 {
+            return "\(seconds / 86400)d"
+        } else {
+            return "\(seconds / 604800)w"
         }
     }
 }

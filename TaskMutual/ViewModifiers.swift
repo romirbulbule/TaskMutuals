@@ -55,16 +55,12 @@ struct ScrollViewWithTabBar<Content: View>: View {
                     let delta = value.translation.height - lastDragValue
                     lastDragValue = value.translation.height
 
-                    print("📊 Drag - translation: \(value.translation.height), delta: \(delta)")
-
                     // Scrolling down (drag up) - hide tab bar
                     if delta < -5 {
-                        print("⬇️ Hiding tab bar")
                         TabBarVisibility.shared.hide()
                     }
                     // Scrolling up (drag down) - show tab bar
                     else if delta > 5 {
-                        print("⬆️ Showing tab bar")
                         TabBarVisibility.shared.show()
                     }
                 }

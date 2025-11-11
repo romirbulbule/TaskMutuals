@@ -6,11 +6,13 @@
 //
 
 import SwiftUI
+import FirebaseAuth
 
 struct EnhancedMainTabView: View {
     @EnvironmentObject var userVM: UserViewModel
     @EnvironmentObject var tasksVM: TasksViewModel
     @StateObject private var tabBarVisibility = TabBarVisibility.shared
+    @StateObject private var chatVM = ChatViewModel(userId: Auth.auth().currentUser?.uid ?? "")
     @State private var selectedTab: Tab = .feed
     @State private var previousTab: Tab = .feed
     @Namespace private var animation
@@ -58,6 +60,7 @@ struct EnhancedMainTabView: View {
                 case .chat:
                     ChatView()
                         .environmentObject(userVM)
+                        .environmentObject(chatVM)
                         .transition(.asymmetric(
                             insertion: slideTransition(for: selectedTab),
                             removal: slideTransition(for: previousTab, isRemoval: true)
@@ -78,6 +81,12 @@ struct EnhancedMainTabView: View {
             customTabBar
         }
         .ignoresSafeArea(.keyboard)
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("NavigateToChat"))) { notification in
+            // Switch to chat tab when notification banner is tapped
+            if selectedTab != .chat {
+                selectTab(.chat)
+            }
+        }
     }
 
     private var customTabBar: some View {
@@ -113,10 +122,25 @@ struct EnhancedMainTabView: View {
                             .matchedGeometryEffect(id: "TAB", in: animation)
                     }
 
-                    Image(systemName: tab.icon)
-                        .font(.system(size: 22, weight: selectedTab == tab ? .semibold : .regular))
-                        .foregroundColor(selectedTab == tab ? Theme.accent : .gray)
-                        .scaleEffect(selectedTab == tab ? 1.1 : 1.0)
+                    ZStack(alignment: .topTrailing) {
+                        Image(systemName: tab.icon)
+                            .font(.system(size: 22, weight: selectedTab == tab ? .semibold : .regular))
+                            .foregroundColor(selectedTab == tab ? Theme.accent : .gray)
+                            .scaleEffect(selectedTab == tab ? 1.1 : 1.0)
+
+                        // Badge for chat tab
+                        if tab == .chat && chatVM.totalUnreadCount > 0 {
+                            Circle()
+                                .fill(Color.red)
+                                .frame(width: 18, height: 18)
+                                .overlay(
+                                    Text("\(chatVM.totalUnreadCount)")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundColor(.white)
+                                )
+                                .offset(x: 12, y: -10)
+                        }
+                    }
                 }
                 .frame(height: 36)
 
