@@ -24,12 +24,19 @@ class PurchaseManager: ObservableObject {
 
     // MARK: - Configure RevenueCat
     static func configure() {
-        // TODO: Replace with your RevenueCat API key from https://app.revenuecat.com
-        // Get this from: RevenueCat Dashboard > Project Settings > API Keys
-        Purchases.logLevel = .debug
-        Purchases.configure(withAPIKey: "test_wNWLOaymQwDoySmbinuTnZtxEui")
+        // Use public API key - it works in both sandbox and production
+        // RevenueCat automatically detects the environment from the app receipt
+        let apiKey = "appl_IuuYfozyVqTIBAqMHyVcLTYgKoc"
 
-        print("✅ RevenueCat configured")
+        #if DEBUG
+        Purchases.logLevel = .debug
+        print("🧪 RevenueCat configured for DEBUG mode (will use Apple Sandbox)")
+        #else
+        Purchases.logLevel = .info
+        print("✅ RevenueCat configured for RELEASE mode (will use Apple Production)")
+        #endif
+
+        Purchases.configure(withAPIKey: apiKey)
     }
 
     // MARK: - Product ID Mapping
