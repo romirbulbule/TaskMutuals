@@ -178,4 +178,44 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
             UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: identifiers)
         }
     }
+
+    // MARK: - Remote Notification Handling
+
+    /// Handle remote notification payloads from Firebase Cloud Messaging
+    func handleRemoteNotification(userInfo: [AnyHashable: Any]) {
+        guard let type = userInfo["type"] as? String else { return }
+
+        switch type {
+        case "chat_message":
+            let chatId = userInfo["chatId"] as? String ?? ""
+            let senderId = userInfo["senderId"] as? String ?? ""
+            let senderName = userInfo["senderName"] as? String ?? "Someone"
+
+            // Extract message from notification payload
+            var message = ""
+            if let aps = userInfo["aps"] as? [String: Any],
+               let alert = aps["alert"] as? [String: Any],
+               let body = alert["body"] as? String {
+                message = body
+            }
+
+            // Show in-app banner if app is in foreground
+            showInAppBanner(
+                senderName: senderName,
+                message: message,
+                chatId: chatId,
+                senderId: senderId,
+                profileImageURL: nil
+            )
+
+        case "badge_update":
+            if let badgeCountStr = userInfo["badgeCount"] as? String,
+               let badgeCount = Int(badgeCountStr) {
+                updateBadgeCount(badgeCount)
+            }
+
+        default:
+            break
+        }
+    }
 }

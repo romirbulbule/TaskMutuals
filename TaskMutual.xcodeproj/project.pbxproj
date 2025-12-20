@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0712C36B2EF6682D00FFDA9A /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 0712C36A2EF6682D00FFDA9A /* FirebaseMessaging */; };
 		072FE9A82E824ADF00AB86E2 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 072FE9A72E824ADF00AB86E2 /* FirebaseAnalytics */; };
 		072FE9AA2E824ADF00AB86E2 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 072FE9A92E824ADF00AB86E2 /* FirebaseAuth */; };
 		072FE9AC2E824F8E00AB86E2 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 072FE9AB2E824F8E00AB86E2 /* FirebaseAnalytics */; };
@@ -92,6 +93,7 @@
 				072FE9AA2E824ADF00AB86E2 /* FirebaseAuth in Frameworks */,
 				07BA2F3E2E8D143B003B4B9F /* FirebaseFirestore in Frameworks */,
 				07B99C492EB00A49004C710B /* CropViewController in Frameworks */,
+				0712C36B2EF6682D00FFDA9A /* FirebaseMessaging in Frameworks */,
 				074964F02EC025470096CC9C /* StoreKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -175,6 +177,7 @@
 				074BB3852EBF060200619550 /* ReceiptParser */,
 				074BB3872EBF060200619550 /* RevenueCat */,
 				074BB3892EBF060200619550 /* RevenueCatUI */,
+				0712C36A2EF6682D00FFDA9A /* FirebaseMessaging */,
 			);
 			productName = TaskMutual;
 			productReference = 072FE9732E82461200AB86E2 /* TaskMutual.app */;
@@ -364,7 +367,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "XCMutualsProject-Mutuals.Project.Mutuals";
+				PRODUCT_BUNDLE_IDENTIFIER = Mutuals.Project.Mutuals;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -665,6 +668,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		0712C36A2EF6682D00FFDA9A /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 072FE9A62E824ADF00AB86E2 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
+		};
 		072FE9A72E824ADF00AB86E2 /* FirebaseAnalytics */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 072FE9A62E824ADF00AB86E2 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;

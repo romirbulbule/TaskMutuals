@@ -45,11 +45,11 @@ class PurchaseManager: ObservableObject {
         case .free:
             return ""  // Free tier has no product
         case .seekerPremium:
-            return "seeker_premium_monthly"
+            return "seeker_premium_monthly12"
         case .providerVerified:
-            return "provider_verified_lifetime"
+            return "provider_verified_lifetime12"
         case .providerPro:
-            return "provider_pro_yearly"
+            return "provider_pro_yearly12"
         }
     }
 

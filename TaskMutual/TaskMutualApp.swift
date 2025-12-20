@@ -8,9 +8,11 @@
 import SwiftUI
 import FirebaseCore
 import FirebaseAuth  // ← Added this import for Auth.auth()
+import FirebaseMessaging
 
 @main
 struct TaskMutualApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var authViewModel = AuthViewModel()
     @StateObject private var userVM = UserViewModel()
     @StateObject private var tasksVM = TasksViewModel()

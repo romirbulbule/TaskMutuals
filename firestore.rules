@@ -1,0 +1,105 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users collection
+    match /users/{userId} {
+      // Users can read their own profile and FCM token
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      // Users can update their own profile and FCM token
+      allow update: if request.auth != null && request.auth.uid == userId;
+
+      // Users can create their own profile
+      allow create: if request.auth != null && request.auth.uid == userId;
+
+      // Users can delete their own profile
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Usernames collection
+    match /usernames/{username} {
+      // Anyone can read usernames for uniqueness check
+      allow read: if request.auth != null;
+
+      // Users can create username documents
+      allow create: if request.auth != null;
+
+      // Users can update their own username document
+      allow update: if request.auth != null &&
+                       request.auth.uid == resource.data.uid;
+
+      // Users can delete their own username document
+      allow delete: if request.auth != null &&
+                       request.auth.uid == resource.data.uid;
+    }
+
+    // Chats collection
+    match /chats/{chatId} {
+      // Users can read chats they're part of
+      allow read: if request.auth != null &&
+                     request.auth.uid in resource.data.participants;
+
+      // Users can create chats they're part of
+      allow create: if request.auth != null &&
+                       request.auth.uid in request.resource.data.participants;
+
+      // Users can update chats they're part of
+      allow update: if request.auth != null &&
+                       request.auth.uid in resource.data.participants;
+
+      // Messages subcollection
+      match /messages/{messageId} {
+        // Users can read messages in chats they're part of
+        allow read: if request.auth != null &&
+                       request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+
+        // Users can create messages in chats they're part of
+        allow create: if request.auth != null &&
+                         request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants &&
+                         request.auth.uid == request.resource.data.senderId;
+      }
+    }
+
+    // Tasks collection
+    match /tasks/{taskId} {
+      // Anyone authenticated can read tasks
+      allow read: if request.auth != null;
+
+      // Users can create their own tasks
+      allow create: if request.auth != null &&
+                       request.auth.uid == request.resource.data.creatorUserId;
+
+      // Users can update their own tasks
+      allow update: if request.auth != null &&
+                       request.auth.uid == resource.data.creatorUserId;
+
+      // Users can delete their own tasks
+      allow delete: if request.auth != null &&
+                       request.auth.uid == resource.data.creatorUserId;
+    }
+
+    // Notifications collection
+    match /notifications/{notificationId} {
+      // Users can read their own notifications
+      allow read: if request.auth != null &&
+                     request.auth.uid == resource.data.userId;
+
+      // Anyone can create notifications (for system notifications)
+      allow create: if request.auth != null;
+
+      // Users can update their own notifications
+      allow update: if request.auth != null &&
+                       request.auth.uid == resource.data.userId;
+
+      // Users can delete their own notifications
+      allow delete: if request.auth != null &&
+                       request.auth.uid == resource.data.userId;
+    }
+
+    // Default deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

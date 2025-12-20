@@ -144,7 +144,9 @@ struct ChatView: View {
                     let newChatData: [String: Any] = [
                         "participants": participantIds,
                         "lastMessage": "",
-                        "lastUpdated": Date()
+                        "lastUpdated": Date(),
+                        "lastSenderId": "",
+                        "unreadCount": [currentUserId: 0, otherUser.id ?? "": 0]
                     ]
                     let newDoc = chatsRef.document()
                     newDoc.setData(newChatData) { err in
@@ -293,17 +295,27 @@ struct ChatRowView: View {
     func formatRelativeTime(_ date: Date) -> String {
         let now = Date()
         let seconds = Int(now.timeIntervalSince(date))
+        let calendar = Calendar.current
 
         if seconds < 60 {
-            return "\(seconds)s"
+            return "now"
         } else if seconds < 3600 {
             return "\(seconds / 60)m"
         } else if seconds < 86400 {
             return "\(seconds / 3600)h"
         } else if seconds < 604800 {
-            return "\(seconds / 86400)d"
+            let days = seconds / 86400
+            return "\(days)d"
+        } else if calendar.isDate(date, equalTo: now, toGranularity: .year) {
+            // Same year: show "MMM dd"
+            let formatter = DateFormatter()
+            formatter.dateFormat = "MMM d"
+            return formatter.string(from: date)
         } else {
-            return "\(seconds / 604800)w"
+            // Different year: show "MMM dd, yyyy"
+            let formatter = DateFormatter()
+            formatter.dateFormat = "MMM d, yyyy"
+            return formatter.string(from: date)
         }
     }
 }

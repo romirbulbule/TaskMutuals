@@ -185,6 +185,10 @@ struct ConversationView: View {
         .onAppear {
             // Mark messages as read when user opens the chat
             messagesVM.markAsRead()
+
+            // Clear local notifications for this chat
+            NotificationManager.shared.clearNotifications(for: chat.id ?? "")
+
             // Fetch other user's profile
             fetchOtherUserProfile()
         }

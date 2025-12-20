@@ -31,6 +31,10 @@ struct UserProfile: Identifiable, Codable, Equatable {
     // Subscription and payment info
     var subscription: SubscriptionInfo?
 
+    // Push notification token
+    var fcmToken: String?
+    var fcmTokenUpdatedAt: Date?
+
     // Custom Equatable implementation (needed for @DocumentID)
     static func == (lhs: UserProfile, rhs: UserProfile) -> Bool {
         return lhs.id == rhs.id &&
@@ -43,7 +47,8 @@ struct UserProfile: Identifiable, Codable, Equatable {
                lhs.userType == rhs.userType &&
                lhs.averageRating == rhs.averageRating &&
                lhs.totalRatings == rhs.totalRatings &&
-               lhs.subscription?.tier == rhs.subscription?.tier
+               lhs.subscription?.tier == rhs.subscription?.tier &&
+               lhs.fcmToken == rhs.fcmToken
     }
 
     // Helper to get subscription or create default
