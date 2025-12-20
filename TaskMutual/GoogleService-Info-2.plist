@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>203736911843-53ijbjm5sd20ses4et31m7j588erumlh.apps.googleusercontent.com</string>
+	<string>203736911843-4cane3ciu6vicvvj13lanbn330rblvh5.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.203736911843-53ijbjm5sd20ses4et31m7j588erumlh</string>
+	<string>com.googleusercontent.apps.203736911843-4cane3ciu6vicvvj13lanbn330rblvh5</string>
 	<key>API_KEY</key>
 	<string>AIzaSyAcJHgM5DnYJ0L2VajkdX3RBxrghm8DGHY</string>
 	<key>GCM_SENDER_ID</key>
@@ -13,7 +13,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>TaskMutuals.icloud.com</string>
+	<string>Mutuals.Project.Mutuals</string>
 	<key>PROJECT_ID</key>
 	<string>taskmutuals</string>
 	<key>STORAGE_BUCKET</key>
@@ -29,6 +29,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:203736911843:ios:2954b87c4fe7f712919ad6</string>
+	<string>1:203736911843:ios:b7ca76050995ad8f919ad6</string>
 </dict>
 </plist>
